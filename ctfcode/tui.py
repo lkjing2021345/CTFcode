@@ -125,6 +125,8 @@ class LeaderScreen(ModalScreen[str | None]):
         Binding("r", "pick('r')", "恢复", show=True),
         Binding("e", "pick('e')", "导出", show=True),
         Binding("f", "pick('f')", "搜索", show=True),
+        Binding("s", "pick('s')", "设置", show=True),
+        Binding("p", "pick('p')", "选会话", show=True),
         Binding("h", "pick('h')", "帮助", show=True),
         Binding("escape", "pick('')", "取消", show=True),
         Binding("ctrl+q", "app_quit", "退出", show=False),
@@ -135,8 +137,8 @@ class LeaderScreen(ModalScreen[str | None]):
             "[b]Leader[/b]  (Ctrl+X)\n\n"
             "  [b]n[/]  新建会话        [b]l[/]  会话列表        [b]m[/]  模型\n"
             "  [b]c[/]  MCP             [b]u[/]  撤销            [b]r[/]  恢复\n"
-            "  [b]e[/]  导出 Markdown   [b]f[/] 搜索            [b]h[/]  帮助\n"
-            "  [b]Esc[/] 取消",
+            "  [b]e[/]  导出 Markdown   [b]f[/] 搜索            [b]s[/]  设置\n"
+            "  [b]p[/]  选会话          [b]h[/]  帮助            [b]Esc[/] 取消",
             id="leader-box",
         )
 
@@ -603,6 +605,7 @@ class CTFApp(App):
         cmd = {
             "n": "/new", "l": "/sessions", "m": "/models", "c": "/mcp",
             "u": "/undo", "r": "/redo", "h": "/help", "e": "/export", "f": "/find",
+            "s": "/settings", "p": "/pick",
         }.get(key)
         if cmd:
             self._command(cmd)
