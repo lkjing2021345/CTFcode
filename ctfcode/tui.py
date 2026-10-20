@@ -32,6 +32,7 @@ from .clipboard import (
 )
 from .config import Config, load_config
 from .container import ContainerManager
+from .errors import friendly
 from .gzctf import Challenge, GZCTFClient, GZCTFError
 from .llm import AgentSession
 from .llm_backend import is_ready as llm_ready
@@ -535,7 +536,7 @@ class CTFApp(App):
                 self._refresh_attach()
                 break
             except Exception as e:  # noqa: BLE001
-                self._log(("! 出错：", "bold red"), (str(e), "red"))
+                self._log(("! 出错：", "bold red"), (friendly(e), "red"))
                 break
             finally:
                 self._agent_busy = False
@@ -772,7 +773,7 @@ class CTFApp(App):
             self._log(("已解析后端：", "green"),
                       (f"{b.label} / {b.model} / token {len(b.api_key)} 字符", "green"))
         except Exception as e:  # noqa: BLE001
-            self._log(("解析失败：", "red"), (str(e), "red"))
+            self._log(("解析失败：", "red"), (friendly(e), "red"))
 
     def _export_markdown(self, args: list[str]) -> None:
         from datetime import datetime
@@ -949,7 +950,7 @@ class CTFApp(App):
                     self.cfg.encrypt_password, self.cfg.rsa_padding,
                 )
         except GZCTFError as e:
-            self._log(("连接/登录失败：", "red"), (str(e), "red"))
+            self._log(("连接/登录失败：", "red"), (friendly(e), "red"))
             return
         self.container = ContainerManager(self.client)
         mode = "API Token" if token else ("账号密码" if self.cfg.gzctf.user else "未认证(公开接口)")
@@ -968,7 +969,7 @@ class CTFApp(App):
         try:
             models = await asyncio.to_thread(list_models, self.cfg, self.session_id)
         except Exception as e:  # noqa: BLE001
-            self._log(("获取模型列表失败：", "red"), (str(e), "red"))
+            self._log(("获取模型列表失败：", "red"), (friendly(e), "red"))
             return
         self.model_list = models
         self._log((f"可用模型（{len(models)}）：", "bold"))
@@ -1012,7 +1013,7 @@ class CTFApp(App):
         try:
             self.detail = await asyncio.to_thread(self.client.challenge_detail, self.gid, cid)
         except GZCTFError as e:
-            self._log(("拉取题目失败：", "red"), (str(e), "red")); return
+            self._log(("拉取题目失败：", "red"), (friendly(e), "red")); return
 
         self.workdir = os.path.join(
             self.cfg.workroot, _safe(self.challenge.category), f"{cid}-{_safe(self.challenge.title)}")
@@ -1110,7 +1111,7 @@ class CTFApp(App):
             if st == "Accepted":
                 self._log(("通过！可用 /writeup 生成 WriteUp。", "bold green"))
         except GZCTFError as e:
-            self._log(("提交失败：", "red"), (str(e), "red"))
+            self._log(("提交失败：", "red"), (friendly(e), "red"))
 
     async def _writeup(self) -> None:
         if not self.challenge:

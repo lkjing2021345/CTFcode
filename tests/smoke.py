@@ -227,6 +227,14 @@ def test_modal_ctrl_q_and_focus() -> None:
     asyncio.run(_tui_modal_focus())
 
 
+def test_friendly_errors() -> None:
+    from ctfcode.errors import friendly
+
+    assert "文件不存在" in friendly(FileNotFoundError(2, "no such file", "a.txt"))
+    assert "超时" in friendly(TimeoutError())
+    assert "ValueError" in friendly(ValueError("bad"))
+
+
 def main() -> int:
     print("smoke tests:")
     for name, fn in [
@@ -243,6 +251,7 @@ def main() -> int:
         ("clipboard-dataurl", test_clipboard_dataurl),
         ("find+session-switch", test_find_and_session_switch),
         ("modal-ctrl-q+focus", test_modal_ctrl_q_and_focus),
+        ("friendly-errors", test_friendly_errors),
     ]:
         check(name, fn)
     if failures:
