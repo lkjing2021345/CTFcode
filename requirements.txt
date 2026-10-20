@@ -1,0 +1,6 @@
+requests>=2.31
+pycryptodome>=3.19
+openai>=1.30
+PyYAML>=6.0
+textual>=0.80
+rich>=13.0

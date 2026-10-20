@@ -1,0 +1,51 @@
+# ── LLM（解题大脑）──
+llm:
+  # 选项 A（推荐）：直连 OpenCode Go，复用本机 `opencode auth login` 的登录，无需另配 key。
+  #   设为 "opencode-go" 或 "opencode" 时，下面的 base_url/api_key 会被忽略。
+  backend: "opencode-go"
+  model: "deepseek-v4.1-flash"     # 可选：glm-5.3-flash / kimi-k2.7-code / qwen3.8-flash /
+                                   #       longcat-2.5-preview-free(免费) / beam-free(免费) 等
+                                   # 看图/视频帧需多模态模型（如某个支持 vision 的模型）
+
+  # 选项 B：普通 OpenAI 兼容端点（把 backend 留空 ""）
+  base_url: "https://api.deepseek.com/v1"
+  api_key: ""
+  headers: {}                      # 自定义请求头（可选）
+
+# ── GZCTF 站点（TUI 里 /open 可直接用这里的配置）──
+gzctf:
+  url: ""                    # 例如 https://ctf.example.com
+  token: ""                  # 推荐：平台「个人设置 → API Token」
+  user: ""
+  password: ""
+
+# ── GZCTF 交互 ──
+encrypt_password: false      # 服务器开了 EncryptApiData 才设 true
+rsa_padding: "oaep"          # oaep 或 pkcs1
+
+# ── Agent ──
+max_steps: 30                # 单轮最多多少步工具调用
+bash_timeout: 60             # 单条命令超时(秒)
+
+# ── 路径 ──
+workroot: "~/CTF/WriteUp"          # WriteUp / 附件保存根目录
+scratch: "~/.cache/gzctf-agent/scratch"   # 未选题时的工作目录
+
+# ── 界面 ──
+ui:
+  icons: plain     # plain=通用符号(▸▾›●└)，nerd=Nerd Font 字形(❯/ 等，需终端为 Nerd Font)
+  resume: true     # 启动时恢复最近一次会话
+  # sessions_dir: "~/.local/share/gzctf-agent/sessions"
+
+# ── MCP 服务器（外部工具）──
+# Burp：在 Burp 顶部 “MCP” 标签页勾选 Enabled（默认 http://127.0.0.1:9876）
+#      注意：Burp 的 SSE 在【根路径】，url 不要加 /sse
+mcp:
+  burp:
+    transport: sse
+    url: "http://127.0.0.1:9876"
+
+  # IDA（可选）：先运行 scripts/ida_mcp_serve.sh <binary> 起服务，再取消下面注释
+  # ida:
+  #   transport: sse
+  #   url: "http://127.0.0.1:8745/sse"   # idalib-mcp 的路径是 /sse

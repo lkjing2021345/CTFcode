@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 本地私密配置（可能含 token / 密码，绝不提交）
+config.yaml
+.env
+.env.*
+*.local.yaml
+
+# 缓存 / 日志 / 会话 / 运行产物
+.cache/
+*.log
+sessions/
+.pytest_cache/
+
+# 靶机镜像等大文件
+*.raw
+*.qcow2
+*.vmdk
+*.ova
+*.vdi
+*.img
+
+# OS
+.DS_Store
