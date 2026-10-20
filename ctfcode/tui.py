@@ -22,7 +22,14 @@ from textual.widgets import Button, Collapsible, Header, Input, Static
 from textual.widgets._collapsible import CollapsibleTitle
 
 from . import writeup as writeup_mod
-from .clipboard import extract_frames, grab_files, grab_image, grab_text, is_image, is_video
+from .clipboard import (
+    extract_frames,
+    grab_files,
+    grab_image,
+    grab_text,
+    is_image,
+    is_video,
+)
 from .config import Config, load_config
 from .container import ContainerManager
 from .gzctf import Challenge, GZCTFClient, GZCTFError

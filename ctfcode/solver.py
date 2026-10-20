@@ -5,8 +5,8 @@ import json
 
 from openai import OpenAI
 
-from .config import Config
 from . import skills as _skills
+from .config import Config
 from .llm_backend import resolve as resolve_backend
 from .tools import TOOL_SCHEMAS, ToolRunner, dispatch
 

@@ -53,7 +53,7 @@ class Monitor:
                 if not d:
                     break
                 self._buf += d
-            except socket.timeout:
+            except TimeoutError:
                 continue
             except OSError:
                 break
@@ -123,7 +123,7 @@ def _probe(host_port: int, timeout: float = 1.5):
         s.settimeout(timeout)
         data = s.recv(256)
         return data != b""          # b"" = peer 立刻关闭 -> 关闭
-    except socket.timeout:
+    except TimeoutError:
         return True                 # 无 banner 但保持连接（如 HTTP）-> 开放
     except OSError:
         return False

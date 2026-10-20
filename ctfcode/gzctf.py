@@ -13,9 +13,9 @@ from dataclasses import dataclass
 import requests
 
 try:
-    from Crypto.PublicKey import RSA
-    from Crypto.Cipher import PKCS1_v1_5, PKCS1_OAEP
+    from Crypto.Cipher import PKCS1_OAEP, PKCS1_v1_5
     from Crypto.Hash import SHA256
+    from Crypto.PublicKey import RSA
 
     _HAS_CRYPTO = True
 except Exception:  # pycryptodome 未安装
@@ -35,7 +35,7 @@ class Challenge:
     solved_count: int = 0
 
     @classmethod
-    def from_json(cls, d: dict) -> "Challenge":
+    def from_json(cls, d: dict) -> Challenge:
         return cls(
             id=d.get("id"),
             title=d.get("title", "untitled"),

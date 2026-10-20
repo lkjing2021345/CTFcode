@@ -14,7 +14,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from contextlib import AsyncExitStack
 
 from mcp import ClientSession
@@ -36,7 +35,7 @@ class MCPManager:
             timeout = float(cfg.get("timeout", 15))
             try:
                 await asyncio.wait_for(self._connect_one(name, cfg), timeout=timeout)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 self.errors[name] = f"连接超时（{timeout}s）——服务没开或地址不对"
             except Exception as e:  # noqa: BLE001
                 self.errors[name] = str(e)
