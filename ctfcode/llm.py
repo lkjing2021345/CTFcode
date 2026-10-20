@@ -8,6 +8,7 @@ from openai import AsyncOpenAI, OpenAI
 
 from . import skills as _skills
 from .config import Config
+from .errors import friendly
 from .llm_backend import resolve as resolve_backend
 from .tools import TOOL_SCHEMAS, ToolRunner, dispatch
 
@@ -87,6 +88,31 @@ class AgentSession:
     def set_system(self, text: str) -> None:
         self.system_prompt = text
         self.messages[0] = {"role": "system", "content": text}
+
+    def _sanitize(self) -> None:
+        """自愈：确保每个 assistant 的 tool_calls 都有对应的 tool 回复。
+
+        中止/异常可能留下「有 tool_calls 却缺 tool 回复」的历史，
+        下一次请求会被 API 拒绝（BadRequest 400）。
+        """
+        msgs = self.messages
+        i = 0
+        while i < len(msgs):
+            m = msgs[i]
+            if isinstance(m, dict) and m.get("role") == "assistant" and m.get("tool_calls"):
+                ids = [tc.get("id") for tc in m["tool_calls"] if isinstance(tc, dict) and tc.get("id")]
+                j = i + 1
+                present: set = set()
+                while j < len(msgs) and isinstance(msgs[j], dict) and msgs[j].get("role") == "tool":
+                    present.add(msgs[j].get("tool_call_id"))
+                    j += 1
+                missing = [tid for tid in ids if tid not in present]
+                for tid in missing:
+                    msgs.insert(j, {"role": "tool", "tool_call_id": tid, "content": "(aborted)"})
+                    j += 1
+                i = j
+            else:
+                i += 1
 
     # ---------- 加用户消息 ----------
     def add_user_text(self, text: str) -> None:
@@ -187,6 +213,7 @@ class AgentSession:
         """emit(kind, payload)。返回候选 flag。"""
         self.pending_flag = None
         self.flag_reason = ""
+        self._sanitize()
         client = self._get_client()
         tools = list(TOOL_SCHEMAS)
         if self.mcp is not None:
@@ -254,10 +281,19 @@ class AgentSession:
                     stop = True
                 else:
                     emit("tool_call", {"name": name, "args": args})
-                    if self.mcp is not None and name in self.mcp.tool_names():
-                        result = await self.mcp.call(name, args)
-                    else:
-                        result = await asyncio.to_thread(dispatch, self.runner, name, args)
+                    try:
+                        if self.mcp is not None and name in self.mcp.tool_names():
+                            result = await self.mcp.call(name, args)
+                        else:
+                            result = await asyncio.to_thread(dispatch, self.runner, name, args)
+                    except asyncio.CancelledError:
+                        # 中止时为该 tool_call 补一条回复，保持历史合法
+                        self.messages.append(
+                            {"role": "tool", "tool_call_id": tc_id, "content": "(aborted)"}
+                        )
+                        raise
+                    except Exception as e:  # noqa: BLE001
+                        result = f"[error] {friendly(e)}"
                     self.transcript.append(f"[tool:{name}] {json.dumps(args, ensure_ascii=False)} -> {result[:1500]}")
                     emit("tool_result", {"name": name, "result": result})
                     self.messages.append({"role": "tool", "tool_call_id": tc_id, "content": result})

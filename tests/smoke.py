@@ -337,6 +337,27 @@ def test_qemu_helpers() -> None:
     assert _probe(port, timeout=0.3) is False
 
 
+def test_sanitize_tool_history() -> None:
+    from ctfcode.config import load_config
+    from ctfcode.llm import AgentSession
+    from ctfcode.tools import ToolRunner
+
+    s = AgentSession(load_config(None), ToolRunner(tempfile.mkdtemp()))
+    s.messages += [
+        {"role": "user", "content": "x"},
+        {"role": "assistant", "content": None, "tool_calls": [
+            {"id": "a1", "type": "function", "function": {"name": "bash", "arguments": "{}"}},
+            {"id": "a2", "type": "function", "function": {"name": "bash", "arguments": "{}"}},
+        ]},
+        {"role": "tool", "tool_call_id": "a1", "content": "ok"},
+        {"role": "assistant", "content": "done"},
+    ]
+    s._sanitize()
+    tools = [m for m in s.messages if m.get("role") == "tool"]
+    assert [m["tool_call_id"] for m in tools] == ["a1", "a2"], tools
+    assert tools[1]["content"] == "(aborted)"
+
+
 def main() -> int:
     print("smoke tests:")
     for name, fn in [
@@ -359,6 +380,7 @@ def main() -> int:
         ("export-empty", test_export_empty_session),
         ("session-picker", test_session_picker),
         ("qemu-helpers", test_qemu_helpers),
+        ("sanitize-tool-history", test_sanitize_tool_history),
     ]:
         check(name, fn)
     if failures:
