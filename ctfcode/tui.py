@@ -18,8 +18,9 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Grid, Horizontal, VerticalScroll
 from textual.screen import ModalScreen
-from textual.widgets import Button, Collapsible, Header, Input, Static
+from textual.widgets import Button, Collapsible, Header, Input, OptionList, Static
 from textual.widgets._collapsible import CollapsibleTitle
+from textual.widgets.option_list import Option
 
 from . import writeup as writeup_mod
 from .clipboard import (
@@ -146,6 +147,41 @@ class LeaderScreen(ModalScreen[str | None]):
         self.app.exit()
 
 
+class SessionPicker(ModalScreen[str | None]):
+    """会话选择器：方向键选择，Enter 打开，Esc 取消。"""
+
+    BINDINGS = [
+        Binding("escape", "cancel", "取消", show=True),
+        Binding("ctrl+q", "app_quit", "退出", show=False),
+    ]
+
+    def __init__(self, sessions: list[dict]):
+        super().__init__()
+        self._sessions = sessions
+
+    def compose(self) -> ComposeResult:
+        options = [
+            Option(f"{s['title']}    {fmt_time(s['updated'])}    ({s['count']} 条)", id=s["id"])
+            for s in self._sessions
+        ]
+        yield OptionList(*options, id="sess-opts")
+
+    def on_mount(self) -> None:
+        try:
+            self.query_one("#sess-opts", OptionList).focus()
+        except Exception:
+            pass
+
+    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
+        self.dismiss(event.option.id)
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)
+
+    def action_app_quit(self) -> None:
+        self.app.exit()
+
+
 class CTFApp(App):
     TITLE = "CTFcode"
     CSS = """
@@ -202,6 +238,8 @@ class CTFApp(App):
     #confirm-btns { height: auto; align: center middle; }
     LeaderScreen { align: center middle; }
     #leader-box { width: 64; height: auto; border: thick $accent; background: $surface; padding: 1 2; }
+    SessionPicker { align: center middle; }
+    #sess-opts { width: 76; height: auto; max-height: 18; border: thick $accent; }
     """
     BINDINGS = [
         Binding("ctrl+v", "paste", "粘贴", priority=True),
@@ -559,6 +597,9 @@ class CTFApp(App):
         self._focus_prompt()
         if not key:
             return
+        if key == "l":
+            self._pick_session()
+            return
         cmd = {
             "n": "/new", "l": "/sessions", "m": "/models", "c": "/mcp",
             "u": "/undo", "r": "/redo", "h": "/help", "e": "/export", "f": "/find",
@@ -692,6 +733,8 @@ class CTFApp(App):
             self._find(args)
         elif cmd == "/settings":
             self._settings_info()
+        elif cmd == "/pick":
+            self._pick_session()
         elif cmd == "/submit":
             if args:
                 self.run_worker(self._do_submit(" ".join(args)))
@@ -732,6 +775,22 @@ class CTFApp(App):
             self._log((f"找不到会话 {sid}", "red"))
             return
         self._restore_session(data)
+
+    def _pick_session(self) -> None:
+        items = self.store.list()
+        if not items:
+            self._log(("没有已保存的会话。", "yellow"))
+            return
+        self._session_list = items
+        self.push_screen(SessionPicker(items), self._on_pick_session)
+
+    def _on_pick_session(self, sid: str | None) -> None:
+        self._focus_prompt()
+        if not sid:
+            return
+        data = self.store.load(sid)
+        if data:
+            self._restore_session(data)
 
     def _undo(self) -> None:
         m = self.session.messages
@@ -865,6 +924,7 @@ class CTFApp(App):
                 "  /undo  /redo         撤销 / 恢复上一条",
                 "  /export [路径]       导出当前会话为 Markdown",
                 "  /find <关键词>       在当前会话记录里搜索",
+                "  /pick                打开会话选择器（方向键）",
                 "  /submit <flag>        提交 flag",
                 "  /writeup              生成 WriteUp 草稿",
                 "  /clear  /quit         清空对话 / 退出",
