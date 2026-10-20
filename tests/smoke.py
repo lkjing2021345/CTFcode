@@ -318,6 +318,25 @@ def test_session_picker() -> None:
     asyncio.run(_picker())
 
 
+def test_qemu_helpers() -> None:
+    import socket
+    import types
+
+    from scripts.qemu_target import _parse_ports, _probe
+
+    ns = types.SimpleNamespace(low="1-3", ports="22,80")
+    assert _parse_ports(ns) == [1, 2, 3, 22, 80], _parse_ports(ns)
+
+    srv = socket.socket()
+    srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    srv.bind(("127.0.0.1", 0))
+    srv.listen(1)
+    port = srv.getsockname()[1]
+    assert _probe(port, timeout=1) is True
+    srv.close()
+    assert _probe(port, timeout=0.3) is False
+
+
 def main() -> int:
     print("smoke tests:")
     for name, fn in [
@@ -339,6 +358,7 @@ def main() -> int:
         ("mcp-down", test_mcp_down),
         ("export-empty", test_export_empty_session),
         ("session-picker", test_session_picker),
+        ("qemu-helpers", test_qemu_helpers),
     ]:
         check(name, fn)
     if failures:
