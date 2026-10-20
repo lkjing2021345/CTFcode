@@ -235,6 +235,84 @@ def test_friendly_errors() -> None:
     assert "ValueError" in friendly(ValueError("bad"))
 
 
+def test_missing_config_source() -> None:
+    from ctfcode.config import load_config
+
+    old = os.getcwd()
+    try:
+        os.chdir(tempfile.mkdtemp())
+        cfg = load_config(None)
+        assert "未找到" in cfg.source, cfg.source
+    finally:
+        os.chdir(old)
+
+
+def test_mcp_down() -> None:
+    from ctfcode.mcp_client import MCPManager
+
+    async def run() -> None:
+        m = MCPManager()
+        await m.connect_all({"dead": {"transport": "sse", "url": "http://127.0.0.1:1", "timeout": 2}})
+        assert "dead" in m.errors, m.errors
+        assert not m.schemas()
+        await m.close()
+
+    asyncio.run(run())
+
+
+async def _export_empty() -> None:
+    from ctfcode.config import load_config
+    from ctfcode.tui import CTFApp
+
+    cfg = load_config(None)
+    cfg.mcp = {}
+    cfg.ui["resume"] = False
+    cfg.ui["sessions_dir"] = tempfile.mkdtemp(prefix="ctfcode-exp-")
+    app = CTFApp(cfg)
+    async with app.run_test(size=(90, 24)) as pilot:
+        await pilot.pause()
+        app.session.transcript = []
+        out = os.path.join(tempfile.mkdtemp(), "empty.md")
+        app._command(f"/export {out}")
+        await pilot.pause()
+        text = open(out, encoding="utf-8").read()
+        assert "暂无记录" in text, text
+
+
+def test_export_empty_session() -> None:
+    asyncio.run(_export_empty())
+
+
+async def _picker() -> None:
+    from ctfcode.config import load_config
+    from ctfcode.sessions import SessionStore
+    from ctfcode.tui import CTFApp, SessionPicker
+
+    d = tempfile.mkdtemp(prefix="ctfcode-pick-")
+    store = SessionStore(d)
+    ids = [store.new_id(), store.new_id()]
+    for i, sid in enumerate(ids):
+        store.save({"id": sid, "title": f"S{i}", "messages": [{"role": "system", "content": "x"}],
+                    "transcript": [f"[user] {i}"]})
+    cfg = load_config(None)
+    cfg.mcp = {}
+    cfg.ui["resume"] = False
+    cfg.ui["sessions_dir"] = d
+    app = CTFApp(cfg)
+    async with app.run_test(size=(90, 24)) as pilot:
+        await pilot.pause()
+        app._pick_session()
+        await pilot.pause()
+        assert isinstance(app.screen, SessionPicker)
+        await pilot.press("escape")
+        await pilot.pause()
+        assert not isinstance(app.screen, SessionPicker)
+
+
+def test_session_picker() -> None:
+    asyncio.run(_picker())
+
+
 def main() -> int:
     print("smoke tests:")
     for name, fn in [
@@ -252,6 +330,10 @@ def main() -> int:
         ("find+session-switch", test_find_and_session_switch),
         ("modal-ctrl-q+focus", test_modal_ctrl_q_and_focus),
         ("friendly-errors", test_friendly_errors),
+        ("missing-config", test_missing_config_source),
+        ("mcp-down", test_mcp_down),
+        ("export-empty", test_export_empty_session),
+        ("session-picker", test_session_picker),
     ]:
         check(name, fn)
     if failures:
