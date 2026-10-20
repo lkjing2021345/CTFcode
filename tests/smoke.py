@@ -167,6 +167,42 @@ def test_clipboard_dataurl() -> None:
     assert is_image(path) and not is_video(path)
 
 
+async def _tui_find_sessions() -> None:
+    from ctfcode.config import load_config
+    from ctfcode.sessions import SessionStore
+    from ctfcode.tui import CTFApp
+
+    d = tempfile.mkdtemp(prefix="ctfcode-sess2-")
+    store = SessionStore(d)
+    a, b = store.new_id(), store.new_id()
+    store.save({"id": a, "title": "A", "messages": [{"role": "system", "content": "x"}],
+                "transcript": ["[user] A"]})
+    store.save({"id": b, "title": "B", "messages": [{"role": "system", "content": "x"}],
+                "transcript": ["[user] B"]})
+    cfg = load_config(None)
+    cfg.mcp = {}
+    cfg.ui["resume"] = False
+    cfg.ui["sessions_dir"] = d
+    app = CTFApp(cfg)
+    async with app.run_test(size=(90, 24)) as pilot:
+        await pilot.pause()
+        app._command("/sessions")
+        await pilot.pause()
+        assert len(app._session_list) == 2, app._session_list
+        app._command("/sessions 1")
+        await pilot.pause()
+        assert app.sess_id == app._session_list[1]["id"]
+        app.session.transcript = ["[user] hello flag", "[assistant] none"]
+        app._command("/find flag")
+        await pilot.pause()
+        app._command("/find zzzz-not-found")
+        await pilot.pause()
+
+
+def test_find_and_session_switch() -> None:
+    asyncio.run(_tui_find_sessions())
+
+
 def main() -> int:
     print("smoke tests:")
     for name, fn in [
@@ -181,6 +217,7 @@ def main() -> int:
         ("session-store", test_session_store),
         ("writeup-fallback", test_writeup_fallback),
         ("clipboard-dataurl", test_clipboard_dataurl),
+        ("find+session-switch", test_find_and_session_switch),
     ]:
         check(name, fn)
     if failures:
