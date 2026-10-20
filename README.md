@@ -300,6 +300,47 @@ ctfcode --url https://ctf.example.com -g 1 --all --token <TOKEN>
 
 ---
 
+## 常见流程示例
+
+**解一道 GZCTF 题**
+```bash
+ctfcode
+/open                      # 用 config.yaml 里的站点/凭证
+/game 1
+/challenges
+/challenge 5               # 下载附件 / 起容器
+/solve                     # 流式解题；候选 flag 弹窗按 Y 确认
+/writeup                   # 生成草稿到 ~/CTF/WriteUp/...
+```
+
+**临时查一个附件（不连平台）**
+```bash
+ctfcode
+Ctrl+V                     # 粘贴题目截图/文本
+直接提问，例如：分析这个流量包，找出 flag
+```
+
+**用 MCP（以 Burp 为例）**
+```bash
+# Burp 顶部 MCP 标签启用后
+/mcp                       # 确认 [OK] burp: N 个工具
+让 Agent 调用 burp__get_proxy_http_history 查看历史
+```
+
+**QEMU 靶机**
+```bash
+python3 scripts/qemu_target.py --monitor mon.sock scan --low 1-1024
+python3 scripts/qemu_target.py --monitor mon.sock fwd 80
+nmap -sV -p 40080 127.0.0.1
+```
+
+**会话管理**
+```bash
+Ctrl+X l   或  /pick       # 方向键选会话（可输入过滤）
+/find flag                 # 当前会话内搜索
+/export                    # 导出 Markdown
+```
+
 ## 测试
 
 ```bash
