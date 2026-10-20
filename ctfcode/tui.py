@@ -1085,14 +1085,16 @@ class CTFApp(App):
 
     async def _games(self) -> None:
         if not self.client:
-            self._log(("请先 /open", "yellow")); return
+            self._log(("请先 /open", "yellow"))
+            return
         data = await asyncio.to_thread(self.client.games)
         for g in data.get("data", []):
             self._log((f"  [{g.get('id')}] ", "cyan"), (f"{g.get('title')}  {g.get('status','')}", ""))
 
     async def _game(self, args: list[str]) -> None:
         if not self.client or not args:
-            self._log(("用法：/game <id>", "yellow")); return
+            self._log(("用法：/game <id>", "yellow"))
+            return
         self.gid = int(args[0])
         d = await asyncio.to_thread(self.client.game_details, self.gid)
         self.challenges = [Challenge.from_json(c) for c in d.get("challenges", [])]
@@ -1100,20 +1102,22 @@ class CTFApp(App):
 
     def _print_challenges(self) -> None:
         if not self.challenges:
-            self._log(("先用 /game <id> 选比赛。", "yellow")); return
+            self._log(("先用 /game <id> 选比赛。", "yellow"))
+            return
         for c in self.challenges:
             self._log((f"  [{c.id}] ", "cyan"), (f"[{c.category}] {c.title} ({c.score}分)", ""))
 
     async def _challenge(self, args: list[str]) -> None:
         if not self.client or self.gid is None or not args:
-            self._log(("用法：/challenge <id>（需先 /game）", "yellow")); return
+            self._log(("用法：/challenge <id>（需先 /game）", "yellow"))
+            return
         cid = int(args[0])
         self.challenge = next((c for c in self.challenges if c.id == cid), Challenge(cid, f"challenge-{cid}"))
         try:
             self.detail = await asyncio.to_thread(self.client.challenge_detail, self.gid, cid)
         except GZCTFError as e:
-            self._log(("拉取题目失败：", "red"), (friendly(e), "red")); return
-
+            self._log(("拉取题目失败：", "red"), (friendly(e), "red"))
+            return
         self.workdir = os.path.join(
             self.cfg.workroot, _safe(self.challenge.category), f"{cid}-{_safe(self.challenge.title)}")
         os.makedirs(self.workdir, exist_ok=True)
@@ -1160,13 +1164,15 @@ class CTFApp(App):
 
     async def _start_container(self) -> None:
         if not (self.client and self.gid and self.challenge and self.container):
-            self._log(("请先 /challenge 载入题目。", "yellow")); return
+            self._log(("请先 /challenge 载入题目。", "yellow"))
+            return
         info = await asyncio.to_thread(self.container.ensure, self.gid, self.challenge.id, self.detail)
         self._log(("容器：", "green"), (str(info.get("entry") or info.get("error")), "bold"))
 
     async def _close_container(self) -> None:
         if not (self.container and self.gid and self.challenge):
-            self._log(("无容器。", "yellow")); return
+            self._log(("无容器。", "yellow"))
+            return
         await asyncio.to_thread(self.container.destroy, self.gid, self.challenge.id)
         self._log(("容器已销毁。", "dim"))
 
@@ -1198,7 +1204,8 @@ class CTFApp(App):
 
     async def _do_submit(self, flag: str) -> None:
         if not (self.client and self.gid and self.challenge):
-            self._log(("未载入题目，无法提交。", "yellow")); return
+            self._log(("未载入题目，无法提交。", "yellow"))
+            return
         try:
             sid = await asyncio.to_thread(
                 self.client.submit, self.gid, self.challenge.id, flag,
@@ -1214,7 +1221,8 @@ class CTFApp(App):
 
     async def _writeup(self) -> None:
         if not self.challenge:
-            self._log(("请先载入题目。", "yellow")); return
+            self._log(("请先载入题目。", "yellow"))
+            return
         meta = {
             "title": self.challenge.title,
             "category": self.challenge.category,

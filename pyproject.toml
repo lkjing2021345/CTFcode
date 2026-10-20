@@ -16,6 +16,7 @@ dependencies = [
     "openai>=1.30",
     "textual>=0.80",
     "mcp>=1.0",
+    "Pillow>=10.0",
 ]
 
 [project.scripts]
@@ -26,3 +27,11 @@ include = ["ctfcode*"]
 
 [tool.setuptools.package-data]
 ctfcode = ["skills/*.md"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = ["E501"]

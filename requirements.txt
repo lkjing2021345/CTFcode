@@ -4,3 +4,5 @@ openai>=1.30
 PyYAML>=6.0
 textual>=0.80
 rich>=13.0
+mcp>=1.0
+Pillow>=10.0
