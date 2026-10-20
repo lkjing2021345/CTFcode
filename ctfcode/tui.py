@@ -278,6 +278,8 @@ class CTFApp(App):
         self._resume_latest()
         self._refresh_header()
         self._log((f"配置：{self.cfg.source}", "dim"))
+        if "未找到" in (self.cfg.source or ""):
+            self._log(("! 未找到 config.yaml，正在使用默认值。请先：cp config.example.yaml config.yaml", "bold yellow"))
         self._log((f"LLM：{self.cfg.llm.backend or 'custom'} / {self.cfg.llm.model}", "dim"))
 
     # ---------- 会话 ----------
@@ -678,6 +680,8 @@ class CTFApp(App):
             self._export_markdown(args)
         elif cmd == "/find":
             self._find(args)
+        elif cmd == "/settings":
+            self._settings_info()
         elif cmd == "/submit":
             if args:
                 self.run_worker(self._do_submit(" ".join(args)))
