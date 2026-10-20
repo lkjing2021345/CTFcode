@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ctfcode"
+version = "0.1.0"
+description = "Terminal CTF assistant with tool calling, MCP support and session history"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "requests>=2.31",
+    "pycryptodome>=3.19",
+    "PyYAML>=6.0",
+    "openai>=1.30",
+    "textual>=0.80",
+    "mcp>=1.0",
+]
+
+[project.scripts]
+ctfcode = "ctfcode.tui:run"
+
+[tool.setuptools.packages.find]
+include = ["ctfcode*"]
+
+[tool.setuptools.package-data]
+ctfcode = ["skills/*.md"]

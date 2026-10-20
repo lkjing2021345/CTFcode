@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# 仓库内启动器：优先用本地 venv，回退系统 python3。
+set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PY="$ROOT/venv/bin/python"
+[[ -x "$PY" ]] || PY="$(command -v python3)"
+exec "$PY" "$ROOT/main.py" --tui "$@"

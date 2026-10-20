@@ -40,6 +40,14 @@ pip install -r requirements.txt
 cp config.example.yaml config.yaml   # 填 LLM key，可选填 GZCTF 站点
 ```
 
+启动方式（任选）：
+
+```bash
+./bin/ctfcode                 # 仓库内启动器（自动用 venv）
+python main.py                # 直接跑
+pip install -e . && ctfcode   # 安装后从任意目录启动
+```
+
 ## 配置 `config.yaml`
 
 ### 方式一（推荐）：直连 OpenCode Go
