@@ -160,7 +160,7 @@ workroot: "~/CTF/WriteUp"
 /model [名字]         查看或切换模型
 /mcp                 查看 MCP 服务器与工具
 /new                 新建会话
-/sessions            列出会话
+/sessions [序号]     列出会话 / 按序号切换
 /resume <序号|id>    恢复某个会话
 /title <名字>        重命名当前会话
 /undo  /redo         撤销 / 恢复上一条

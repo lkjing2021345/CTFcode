@@ -658,7 +658,10 @@ class CTFApp(App):
         elif cmd == "/new":
             self._new_session()
         elif cmd == "/sessions":
-            self._list_sessions()
+            if args:
+                self._resume_cmd(args)
+            else:
+                self._list_sessions()
         elif cmd == "/resume":
             self._resume_cmd(args)
         elif cmd == "/title":
@@ -704,6 +707,8 @@ class CTFApp(App):
         if not args:
             self._list_sessions()
             return
+        if not self._session_list:
+            self._session_list = self.store.list()
         key = args[0]
         sid = key
         if key.isdigit() and self._session_list and int(key) < len(self._session_list):
@@ -824,7 +829,7 @@ class CTFApp(App):
                 "  /mcp                 查看 MCP 服务器与工具",
                 "  /llm                 查看 LLM 后端/凭证状态",
                 "  /new                 新建会话",
-                "  /sessions            列出会话",
+                "  /sessions [序号]      列出会话 / 按序号切换",
                 "  /resume <序号|id>    恢复会话",
                 "  /title <名字>        重命名当前会话",
                 "  /undo  /redo         撤销 / 恢复上一条",
