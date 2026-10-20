@@ -1,4 +1,4 @@
-# GZCTF 自动解题 Agent
+# CTFcode — 终端 CTF 助手
 
 给它一个 GZCTF 网址，它会：**识别站点 → 登录 → 拉题目 → 下载附件 → 起容器靶机 → 用 LLM 调用本地 CTF 工具解题 → 候选 flag 人工确认后提交 → 自动生成 WriteUp 草稿**。
 
@@ -13,22 +13,29 @@
 ```
 agent/
 ├── main.py                 # 入口（默认开 TUI；带 --url 走 CLI）
+├── bin/ctfcode             # 仓库内启动器
 ├── config.example.yaml
 ├── requirements.txt
+├── pyproject.toml
+├── tests/smoke.py          # 冒烟测试
+├── scripts/                # ida_headless.py / ida_mcp_serve.sh / qemu_target.py
+├── .w1mer/                 # 任务与文档归档
 └── ctfcode/
-    ├── config.py           # 配置
-    ├── gzctf.py            # GZCTF REST API 客户端（含容器接口）
-    ├── container.py        # 容器题实例管理
+    ├── tui.py              # 终端界面（会话 / Leader / 导出）
+    ├── cli.py              # 命令行模式
+    ├── solver.py           # CLI 解题循环
+    ├── llm.py              # 多模态会话（流式 + 工具调用）
+    ├── llm_backend.py      # LLM 后端解析（OpenAI 兼容 / OpenCode Go）
+    ├── mcp_client.py       # MCP 客户端（sse / http / stdio）
+    ├── sessions.py         # 会话持久化
+    ├── tools.py            # 工具（bash/python/read/write/skill/submit_flag）
+    ├── skills.py           # 技能注册
+    ├── skills/             # 各方向工具手册（*.md）
     ├── clipboard.py        # 剪贴板：文本/图片/文件 + 视频抽帧
-    ├── tools.py            # 暴露给 LLM 的工具（bash/python/read/write/skill/submit_flag）
-    ├── skills.py           # 技能手册注册
-    ├── skills/             # 各方向 CTF 工具用法手册（*.md）
-    ├── llm.py              # 多模态 Agent 会话（async + 工具调用）
-    ├── llm_backend.py      # LLM 后端解析（支持直连 OpenCode Go + 列模型）
-    ├── solver.py           # CLI 用的解题循环
+    ├── gzctf.py            # GZCTF 平台 API 客户端（含容器接口）
+    ├── container.py        # 容器题实例管理
     ├── writeup.py          # WriteUp 草稿生成
-    ├── tui.py              # Textual 终端前端
-    └── cli.py              # 命令行模式（CLI）
+    └── config.py           # 配置
 ```
 
 ## 安装
@@ -157,6 +164,7 @@ workroot: "~/CTF/WriteUp"
 /resume <序号|id>    恢复某个会话
 /title <名字>        重命名当前会话
 /undo  /redo         撤销 / 恢复上一条
+/export [路径]       导出当前会话为 Markdown
 /submit <flag>        提交 flag
 /writeup              生成 WriteUp 草稿
 /clear  /quit
@@ -175,7 +183,7 @@ workroot: "~/CTF/WriteUp"
 
 没有载入题目时，它就是一个通用 CTF 助手——你可以直接粘贴题目图片或文本问它。
 
-### 对话历史（像 opencode）
+### 对话历史（持久化）
 
 - **自动持久化**：每轮结束把会话存到 `~/.local/share/gzctf-agent/sessions/<id>.json`（含上下文消息与简要记录）。
 - **重启恢复**：启动时自动恢复**最近一次**会话（`ui.resume: false` 可关）。
@@ -224,7 +232,7 @@ Agent 内置一套「技能手册」，把各方向工具的用法沉淀成 md�
 
 > 真正**执行**工具（binwalk / zsteg / sqlmap / pwntools…）是通过 `bash` / `python` 工具在题目工作目录里跑的——skill 负责「怎么用」，bash 负责「真的跑」。
 
-## 四、MCP（外部工具，如 Burp Suite）
+## 五、MCP（外部工具，如 Burp Suite）
 
 内置 MCP 客户端，可连接外部 MCP 服务器，把它们的工具并进 Agent。**支持 SSE / streamable-http / stdio**。
 
@@ -271,7 +279,7 @@ mcp:
 
 > 只想**静态自动分析**、不想起服务的话，直接用 `ida` skill 的 `scripts/ida_headless.py`（打开任意二进制、无需 MCP），更省事。
 
-## 五、命令行模式（CLI）
+## 六、命令行模式（CLI）
 
 CLI 就是**非交互**的那条路：给它参数就跑，打印结果后退出。它和 TUI 是同一个程序，
 带 `--url` 就会自动走 CLI；`--cli` 只是显式声明一下（两者等价）：
@@ -288,6 +296,12 @@ ctfcode --url https://ctf.example.com -g 1 --all --token <TOKEN>
 ```
 
 ---
+
+## 测试
+
+```bash
+./venv/bin/python tests/smoke.py   # 无需网络/LLM，覆盖配置、工具、会话、界面挂载与快捷键
+```
 
 ## 认证的两个坑
 
