@@ -166,6 +166,7 @@ workroot: "~/CTF/WriteUp"
 /undo  /redo         撤销 / 恢复上一条
 /export [路径]       导出当前会话为 Markdown
 /find <关键词>       在当前会话记录里搜索
+/settings            查看当前配置（脱敏）
 /submit <flag>        提交 flag
 /writeup              生成 WriteUp 草稿
 /clear  /quit

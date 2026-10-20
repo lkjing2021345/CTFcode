@@ -805,6 +805,21 @@ class CTFApp(App):
         for i, line in hits[-30:]:
             self._log((f"  #{i} ", "cyan"), (line[:200], "dim"))
 
+    def _settings_info(self) -> None:
+        self._log(("当前配置（密钥已隐藏）：", "bold"))
+        rows = [
+            ("配置来源", self.cfg.source),
+            ("LLM 后端", self.cfg.llm.backend or "custom"),
+            ("模型", self.cfg.llm.model),
+            ("工作目录", self.workdir or "(scratch)"),
+            ("WriteUp", self.cfg.workroot),
+            ("会话目录", str(self.cfg.ui.get("sessions_dir") or "~/.local/share/gzctf-agent/sessions")),
+            ("图标", str(self.cfg.ui.get("icons", "plain"))),
+            ("MCP", ", ".join(self.cfg.mcp.keys()) or "(无)"),
+        ]
+        for k, v in rows:
+            self._log((f"  {k}: {v}", "dim"))
+
     def _mcp_info(self) -> None:
         if self.mcp is None:
             self._log(("未配置 MCP。在 config.yaml 的 mcp 段添加（如 burp），重启后生效。", "yellow"))
@@ -832,6 +847,7 @@ class CTFApp(App):
                 "  /model [名字]         查看或切换模型",
                 "  /mcp                 查看 MCP 服务器与工具",
                 "  /llm                 查看 LLM 后端/凭证状态",
+                "  /settings            查看当前配置（脱敏）",
                 "  /new                 新建会话",
                 "  /sessions [序号]      列出会话 / 按序号切换",
                 "  /resume <序号|id>    恢复会话",
