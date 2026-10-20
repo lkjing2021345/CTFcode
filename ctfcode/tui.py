@@ -100,6 +100,33 @@ class ConfirmModal(ModalScreen[bool]):
         self._finish(False)
 
 
+class LeaderScreen(ModalScreen[str | None]):
+    """Ctrl+X 之后的一键操作面板（类似编辑器 leader）。"""
+
+    BINDINGS = [
+        Binding("n", "pick('n')", "新会话", show=True),
+        Binding("l", "pick('l')", "会话列表", show=True),
+        Binding("m", "pick('m')", "模型", show=True),
+        Binding("c", "pick('c')", "MCP", show=True),
+        Binding("u", "pick('u')", "撤销", show=True),
+        Binding("r", "pick('r')", "恢复", show=True),
+        Binding("h", "pick('h')", "帮助", show=True),
+        Binding("escape", "pick('')", "取消", show=True),
+    ]
+
+    def compose(self) -> ComposeResult:
+        yield Static(
+            "[b]Leader[/b]  (Ctrl+X)\n\n"
+            "  [b]n[/]  新建会话        [b]l[/]  会话列表        [b]m[/]  模型\n"
+            "  [b]c[/]  MCP             [b]u[/]  撤销            [b]r[/]  恢复\n"
+            "  [b]h[/]  帮助            [b]Esc[/] 取消",
+            id="leader-box",
+        )
+
+    def action_pick(self, key: str) -> None:
+        self.dismiss(key or None)
+
+
 class CTFApp(App):
     TITLE = "CTFcode"
     CSS = """
@@ -154,11 +181,14 @@ class CTFApp(App):
     #confirm-msg { height: auto; }
     #confirm-hint { height: auto; color: $text-muted; margin-top: 1; }
     #confirm-btns { height: auto; align: center middle; }
+    LeaderScreen { align: center middle; }
+    #leader-box { width: 64; height: auto; border: thick $accent; background: $surface; padding: 1 2; }
     """
     BINDINGS = [
         Binding("ctrl+v", "paste", "粘贴", priority=True),
         Binding("ctrl+w", "writeup", "WriteUp", priority=True),
         Binding("ctrl+o", "toggle_thinking", "展开/折叠思考"),
+        Binding("ctrl+x", "leader", "Leader", show=False, priority=True),
         Binding("escape", "abort", "终止", show=False),
         Binding("pageup", "scroll_log('up')", "上翻", show=True, priority=True),
         Binding("pagedown", "scroll_log('down')", "下翻", show=True, priority=True),
@@ -499,6 +529,21 @@ class CTFApp(App):
                 break
         self._agent_busy = False
 
+    def action_leader(self) -> None:
+        if getattr(self.screen, "is_modal", False):
+            return
+        self.push_screen(LeaderScreen(), self._on_leader)
+
+    def _on_leader(self, key: str | None) -> None:
+        if not key:
+            return
+        cmd = {
+            "n": "/new", "l": "/sessions", "m": "/models", "c": "/mcp",
+            "u": "/undo", "r": "/redo", "h": "/help",
+        }.get(key)
+        if cmd:
+            self._command(cmd)
+
     def action_abort(self) -> None:
         if not self._agent_busy and not self._queue:
             return
@@ -733,7 +778,7 @@ class CTFApp(App):
                 "  /writeup              生成 WriteUp 草稿",
                 "  /clear  /quit         清空对话 / 退出",
                 "",
-                "快捷键：Ctrl+V 粘贴  PgUp/PgDn 翻页  Ctrl+Home/End 顶/底  Esc 终止  Ctrl+W WriteUp  Ctrl+O 思考  Ctrl+L 清屏  Ctrl+Q 退出",
+                "快捷键：Ctrl+V 粘贴  Ctrl+X Leader(n/l/m/c/u/r/h)  PgUp/PgDn 翻页  Esc 终止  Ctrl+W WriteUp  Ctrl+O 思考  Ctrl+L 清屏  Ctrl+Q 退出",
             ]),
             "dim",
         ))
