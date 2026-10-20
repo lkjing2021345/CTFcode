@@ -118,6 +118,7 @@ class LeaderScreen(ModalScreen[str | None]):
         Binding("u", "pick('u')", "撤销", show=True),
         Binding("r", "pick('r')", "恢复", show=True),
         Binding("e", "pick('e')", "导出", show=True),
+        Binding("f", "pick('f')", "搜索", show=True),
         Binding("h", "pick('h')", "帮助", show=True),
         Binding("escape", "pick('')", "取消", show=True),
     ]
@@ -127,7 +128,8 @@ class LeaderScreen(ModalScreen[str | None]):
             "[b]Leader[/b]  (Ctrl+X)\n\n"
             "  [b]n[/]  新建会话        [b]l[/]  会话列表        [b]m[/]  模型\n"
             "  [b]c[/]  MCP             [b]u[/]  撤销            [b]r[/]  恢复\n"
-            "  [b]e[/]  导出 Markdown   [b]h[/]  帮助            [b]Esc[/] 取消",
+            "  [b]e[/]  导出 Markdown   [b]f[/] 搜索            [b]h[/]  帮助\n"
+            "  [b]Esc[/] 取消",
             id="leader-box",
         )
 
@@ -547,7 +549,7 @@ class CTFApp(App):
             return
         cmd = {
             "n": "/new", "l": "/sessions", "m": "/models", "c": "/mcp",
-            "u": "/undo", "r": "/redo", "h": "/help", "e": "/export",
+            "u": "/undo", "r": "/redo", "h": "/help", "e": "/export", "f": "/find",
         }.get(key)
         if cmd:
             self._command(cmd)
@@ -671,6 +673,8 @@ class CTFApp(App):
             self._redo_cmd()
         elif cmd == "/export":
             self._export_markdown(args)
+        elif cmd == "/find":
+            self._find(args)
         elif cmd == "/submit":
             if args:
                 self.run_worker(self._do_submit(" ".join(args)))
@@ -779,6 +783,19 @@ class CTFApp(App):
             f.write("\n".join(lines))
         self._log(("已导出会话：", "bold green"), (path, "green"))
 
+    def _find(self, args: list[str]) -> None:
+        if not args:
+            self._log(("用法：/find <关键词>", "yellow"))
+            return
+        q = " ".join(args).lower()
+        hits = [(i, line) for i, line in enumerate(self.session.transcript) if q in line.lower()]
+        if not hits:
+            self._log((f"未找到：{q}", "dim"))
+            return
+        self._log((f"匹配 {len(hits)} 处（显示最近 30 条）：", "bold"))
+        for i, line in hits[-30:]:
+            self._log((f"  #{i} ", "cyan"), (line[:200], "dim"))
+
     def _mcp_info(self) -> None:
         if self.mcp is None:
             self._log(("未配置 MCP。在 config.yaml 的 mcp 段添加（如 burp），重启后生效。", "yellow"))
@@ -812,6 +829,7 @@ class CTFApp(App):
                 "  /title <名字>        重命名当前会话",
                 "  /undo  /redo         撤销 / 恢复上一条",
                 "  /export [路径]       导出当前会话为 Markdown",
+                "  /find <关键词>       在当前会话记录里搜索",
                 "  /submit <flag>        提交 flag",
                 "  /writeup              生成 WriteUp 草稿",
                 "  /clear  /quit         清空对话 / 退出",

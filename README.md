@@ -117,7 +117,7 @@ workroot: "~/CTF/WriteUp"
 | 键 | 作用 |
 |---|---|
 | **Ctrl+V** | 粘贴：优先图片 → 文件 → 文本；**视频自动抽帧**成图片 |
-| **Ctrl+X** | Leader 面板：`n` 新会话 · `l` 会话 · `m` 模型 · `c` MCP · `u` 撤销 · `r` 恢复 · `e` 导出 · `h` 帮助 |
+| **Ctrl+X** | Leader 面板：`n` 新会话 · `l` 会话 · `m` 模型 · `c` MCP · `u` 撤销 · `r` 恢复 · `e` 导出 · `f` 搜索 · `h` 帮助 |
 | **Esc** | 终止当前思考 / 工具调用（并清空排队） |
 | **PageUp / PageDown** | 对话区上翻 / 下翻 |
 | Ctrl+Home / Ctrl+End | 跳到顶部 / 底部 |
@@ -165,6 +165,7 @@ workroot: "~/CTF/WriteUp"
 /title <名字>        重命名当前会话
 /undo  /redo         撤销 / 恢复上一条
 /export [路径]       导出当前会话为 Markdown
+/find <关键词>       在当前会话记录里搜索
 /submit <flag>        提交 flag
 /writeup              生成 WriteUp 草稿
 /clear  /quit
