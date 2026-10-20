@@ -100,6 +100,73 @@ def test_tui() -> None:
     asyncio.run(_tui())
 
 
+async def _tui_extra() -> None:
+    from ctfcode.config import load_config
+    from ctfcode.tui import CTFApp, ConfirmModal
+
+    cfg = load_config(None)
+    cfg.mcp = {}
+    cfg.ui["resume"] = False
+    cfg.ui["sessions_dir"] = tempfile.mkdtemp(prefix="ctfcode-smoke2-")
+    app = CTFApp(cfg)
+    async with app.run_test(size=(90, 24)) as pilot:
+        await pilot.pause()
+        sysmsg = app.session.messages[0]
+        app.session.messages = [sysmsg,
+                                {"role": "user", "content": "hi"},
+                                {"role": "assistant", "content": "yo"}]
+        app._command("/undo")
+        await pilot.pause()
+        assert len(app.session.messages) == 1, app.session.messages
+        assert app.query_one("#prompt").value == "hi"
+        app._command("/redo")
+        await pilot.pause()
+        assert len(app.session.messages) == 3
+        got: list[bool] = []
+        app.push_screen(ConfirmModal("flag{x}", "reason"), lambda v: got.append(v))
+        await pilot.pause()
+        await pilot.press("y")
+        await pilot.pause()
+        assert got == [True], got
+
+
+def test_tui_undo_redo_confirm() -> None:
+    asyncio.run(_tui_extra())
+
+
+def test_session_store() -> None:
+    from ctfcode.sessions import SessionStore
+
+    store = SessionStore(tempfile.mkdtemp(prefix="ctfcode-sess-"))
+    sid = store.new_id()
+    store.save({"id": sid, "title": "demo", "messages": [{"role": "system", "content": "x"}]})
+    assert store.load(sid)["title"] == "demo"
+    assert any(x["id"] == sid for x in store.list())
+
+
+def test_writeup_fallback() -> None:
+    from ctfcode import writeup
+
+    md = writeup._fallback(
+        {"title": "T", "category": "Misc", "cid": 1, "description": "d"},
+        ["[user] hi", "[flag] flag{a}"],
+        "flag{a}",
+    )
+    assert "flag{a}" in md and "T" in md
+
+
+def test_clipboard_dataurl() -> None:
+    from PIL import Image
+
+    from ctfcode.clipboard import image_data_url, is_image, is_video
+
+    path = os.path.join(tempfile.mkdtemp(), "t.png")
+    Image.new("RGB", (4, 4), (1, 2, 3)).save(path)
+    url = image_data_url(path)
+    assert url.startswith("data:image/png;base64,")
+    assert is_image(path) and not is_video(path)
+
+
 def main() -> int:
     print("smoke tests:")
     for name, fn in [
@@ -110,6 +177,10 @@ def main() -> int:
         ("container-parse", test_container_parse),
         ("mcp-shapes", test_mcp_message_shapes),
         ("tui-mount+leader", test_tui),
+        ("tui-undo-redo-confirm", test_tui_undo_redo_confirm),
+        ("session-store", test_session_store),
+        ("writeup-fallback", test_writeup_fallback),
+        ("clipboard-dataurl", test_clipboard_dataurl),
     ]:
         check(name, fn)
     if failures:
