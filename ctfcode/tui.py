@@ -117,6 +117,7 @@ class LeaderScreen(ModalScreen[str | None]):
         Binding("c", "pick('c')", "MCP", show=True),
         Binding("u", "pick('u')", "撤销", show=True),
         Binding("r", "pick('r')", "恢复", show=True),
+        Binding("e", "pick('e')", "导出", show=True),
         Binding("h", "pick('h')", "帮助", show=True),
         Binding("escape", "pick('')", "取消", show=True),
     ]
@@ -126,7 +127,7 @@ class LeaderScreen(ModalScreen[str | None]):
             "[b]Leader[/b]  (Ctrl+X)\n\n"
             "  [b]n[/]  新建会话        [b]l[/]  会话列表        [b]m[/]  模型\n"
             "  [b]c[/]  MCP             [b]u[/]  撤销            [b]r[/]  恢复\n"
-            "  [b]h[/]  帮助            [b]Esc[/] 取消",
+            "  [b]e[/]  导出 Markdown   [b]h[/]  帮助            [b]Esc[/] 取消",
             id="leader-box",
         )
 
@@ -546,7 +547,7 @@ class CTFApp(App):
             return
         cmd = {
             "n": "/new", "l": "/sessions", "m": "/models", "c": "/mcp",
-            "u": "/undo", "r": "/redo", "h": "/help",
+            "u": "/undo", "r": "/redo", "h": "/help", "e": "/export",
         }.get(key)
         if cmd:
             self._command(cmd)
@@ -668,6 +669,8 @@ class CTFApp(App):
             self._undo()
         elif cmd == "/redo":
             self._redo_cmd()
+        elif cmd == "/export":
+            self._export_markdown(args)
         elif cmd == "/submit":
             if args:
                 self.run_worker(self._do_submit(" ".join(args)))
@@ -749,6 +752,33 @@ class CTFApp(App):
         except Exception as e:  # noqa: BLE001
             self._log(("解析失败：", "red"), (str(e), "red"))
 
+    def _export_markdown(self, args: list[str]) -> None:
+        from datetime import datetime
+
+        lines = [
+            f"# {self.sess_title or 'CTF 会话'}",
+            "",
+            f"- 会话：`{self.sess_id}`",
+            f"- 模型：`{self.cfg.llm.model}`",
+            f"- 时间：{datetime.now().strftime('%Y-%m-%d %H:%M')}",
+            "",
+            "---",
+            "",
+        ]
+        for line in (self.session.transcript or ["（暂无记录）"]):
+            lines.append(line)
+            lines.append("")
+        if args:
+            path = os.path.expanduser(args[0])
+        else:
+            base = os.path.expanduser("~/CTF/WriteUp/exports")
+            os.makedirs(base, exist_ok=True)
+            path = os.path.join(base, f"{self.sess_id}.md")
+        os.makedirs(os.path.dirname(os.path.abspath(path)) or ".", exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines))
+        self._log(("已导出会话：", "bold green"), (path, "green"))
+
     def _mcp_info(self) -> None:
         if self.mcp is None:
             self._log(("未配置 MCP。在 config.yaml 的 mcp 段添加（如 burp），重启后生效。", "yellow"))
@@ -781,6 +811,7 @@ class CTFApp(App):
                 "  /resume <序号|id>    恢复会话",
                 "  /title <名字>        重命名当前会话",
                 "  /undo  /redo         撤销 / 恢复上一条",
+                "  /export [路径]       导出当前会话为 Markdown",
                 "  /submit <flag>        提交 flag",
                 "  /writeup              生成 WriteUp 草稿",
                 "  /clear  /quit         清空对话 / 退出",
