@@ -203,6 +203,30 @@ def test_find_and_session_switch() -> None:
     asyncio.run(_tui_find_sessions())
 
 
+async def _tui_modal_focus() -> None:
+    from ctfcode.config import load_config
+    from ctfcode.tui import CTFApp, ConfirmModal
+
+    cfg = load_config(None)
+    cfg.mcp = {}
+    cfg.ui["resume"] = False
+    cfg.ui["sessions_dir"] = tempfile.mkdtemp(prefix="ctfcode-modal-")
+    app = CTFApp(cfg)
+    async with app.run_test(size=(90, 24)) as pilot:
+        await pilot.pause()
+        app.push_screen(ConfirmModal("flag{x}", "r"), app._on_confirm)
+        await pilot.pause()
+        assert app.active_bindings.get("ctrl+q") is not None, "模态内 ctrl+q 未绑定"
+        await pilot.press("n")
+        await pilot.pause()
+        await pilot.pause()
+        assert type(app.focused).__name__ == "Input", app.focused
+
+
+def test_modal_ctrl_q_and_focus() -> None:
+    asyncio.run(_tui_modal_focus())
+
+
 def main() -> int:
     print("smoke tests:")
     for name, fn in [
@@ -218,6 +242,7 @@ def main() -> int:
         ("writeup-fallback", test_writeup_fallback),
         ("clipboard-dataurl", test_clipboard_dataurl),
         ("find+session-switch", test_find_and_session_switch),
+        ("modal-ctrl-q+focus", test_modal_ctrl_q_and_focus),
     ]:
         check(name, fn)
     if failures:

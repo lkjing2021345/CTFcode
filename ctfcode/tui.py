@@ -64,6 +64,7 @@ class ConfirmModal(ModalScreen[bool]):
         Binding("enter", "confirm", "确认", show=False),
         Binding("n", "cancel", "忽略", show=True),
         Binding("escape", "cancel", "忽略", show=False),
+        Binding("ctrl+q", "app_quit", "退出", show=False),
     ]
 
     def __init__(self, flag: str, reason: str = ""):
@@ -81,7 +82,7 @@ class ConfirmModal(ModalScreen[bool]):
                 Button("忽略", variant="error", id="no"),
                 id="confirm-btns",
             ),
-            Static("按 Y / Enter 确认      N / Esc 忽略", id="confirm-hint"),
+            Static("按 Y / Enter 确认      N / Esc 忽略      Ctrl+Q 退出", id="confirm-hint"),
             id="confirm-box",
         )
 
@@ -106,6 +107,9 @@ class ConfirmModal(ModalScreen[bool]):
     def action_cancel(self) -> None:
         self._finish(False)
 
+    def action_app_quit(self) -> None:
+        self.app.exit()
+
 
 class LeaderScreen(ModalScreen[str | None]):
     """Ctrl+X 之后的一键操作面板（类似编辑器 leader）。"""
@@ -121,6 +125,7 @@ class LeaderScreen(ModalScreen[str | None]):
         Binding("f", "pick('f')", "搜索", show=True),
         Binding("h", "pick('h')", "帮助", show=True),
         Binding("escape", "pick('')", "取消", show=True),
+        Binding("ctrl+q", "app_quit", "退出", show=False),
     ]
 
     def compose(self) -> ComposeResult:
@@ -135,6 +140,9 @@ class LeaderScreen(ModalScreen[str | None]):
 
     def action_pick(self, key: str) -> None:
         self.dismiss(key or None)
+
+    def action_app_quit(self) -> None:
+        self.app.exit()
 
 
 class CTFApp(App):
@@ -547,6 +555,7 @@ class CTFApp(App):
         self.push_screen(LeaderScreen(), self._on_leader)
 
     def _on_leader(self, key: str | None) -> None:
+        self._focus_prompt()
         if not key:
             return
         cmd = {
@@ -1072,7 +1081,14 @@ class CTFApp(App):
                 self._log(("附件下载失败：", "red"), (str(e), "red"))
         return out
 
+    def _focus_prompt(self) -> None:
+        try:
+            self.query_one("#prompt", Input).focus()
+        except Exception:
+            pass
+
     def _on_confirm(self, confirmed: bool) -> None:
+        self._focus_prompt()
         if not confirmed:
             self._log(("已忽略候选 flag。", "dim"))
             return
