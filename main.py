@@ -15,9 +15,30 @@ os.environ.setdefault("TEXTUAL_DISABLE_KITTY_KEY", "1")
 
 AGENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
+TOP_HELP = """CTFcode — 终端 CTF 助手
+
+用法:
+  ctfcode                        打开终端界面（TUI）
+  ctfcode --tui [--config PATH]  指定配置文件
+  ctfcode --cli --url URL ...    命令行模式（批量）
+  ctfcode --version              显示版本
+  ctfcode --help                 显示本帮助
+
+TUI 内输入 /help 查看全部命令与快捷键。
+"""
+
 
 def main() -> None:
     argv = sys.argv[1:]
+
+    if argv and argv[0] in ("--version", "-V"):
+        from ctfcode import __version__
+
+        print(f"ctfcode {__version__}")
+        return
+    if argv and argv[0] in ("--help", "-h"):
+        print(TOP_HELP)
+        return
 
     # 显式 CLI 模式：ctfcode --cli --url ... -g 1
     if "--cli" in argv:
