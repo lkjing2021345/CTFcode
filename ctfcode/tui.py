@@ -150,32 +150,64 @@ class LeaderScreen(ModalScreen[str | None]):
 
 
 class SessionPicker(ModalScreen[str | None]):
-    """会话选择器：方向键选择，Enter 打开，Esc 取消。"""
+    """会话选择器：输入过滤、方向键选择、Enter 打开、Esc 取消。"""
 
     BINDINGS = [
         Binding("escape", "cancel", "取消", show=True),
         Binding("ctrl+q", "app_quit", "退出", show=False),
+        Binding("up", "move(-1)", "上移", show=False, priority=True),
+        Binding("down", "move(1)", "下移", show=False, priority=True),
     ]
 
     def __init__(self, sessions: list[dict]):
         super().__init__()
-        self._sessions = sessions
+        self._all = sessions
+        self._shown: list[dict] = []
 
     def compose(self) -> ComposeResult:
-        options = [
-            Option(f"{s['title']}    {fmt_time(s['updated'])}    ({s['count']} 条)", id=s["id"])
-            for s in self._sessions
-        ]
-        yield OptionList(*options, id="sess-opts")
+        yield Input(placeholder="输入过滤，↑↓ 选择，Enter 打开，Esc 取消", id="sess-filter")
+        yield OptionList(id="sess-opts")
 
     def on_mount(self) -> None:
+        self._fill("")
         try:
-            self.query_one("#sess-opts", OptionList).focus()
+            self.query_one("#sess-filter", Input).focus()
         except Exception:
             pass
 
+    def _fill(self, q: str) -> None:
+        q = q.strip().lower()
+        self._shown = [
+            s for s in self._all
+            if not q or q in (s.get("title") or "").lower() or q in str(s.get("id", "")).lower()
+        ]
+        ol = self.query_one("#sess-opts", OptionList)
+        ol.clear_options()
+        for s in self._shown:
+            ol.add_option(Option(f"{s['title']}    {fmt_time(s['updated'])}    ({s['count']} 条)", id=s["id"]))
+        if self._shown:
+            ol.highlighted = 0
+
+    def on_input_changed(self, event: Input.Changed) -> None:
+        self._fill(event.value)
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        self._select()
+
     def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
         self.dismiss(event.option.id)
+
+    def _select(self) -> None:
+        ol = self.query_one("#sess-opts", OptionList)
+        if self._shown and ol.highlighted is not None:
+            self.dismiss(ol.get_option_at_index(ol.highlighted).id)
+
+    def action_move(self, delta: int) -> None:
+        ol = self.query_one("#sess-opts", OptionList)
+        if not self._shown:
+            return
+        cur = ol.highlighted if ol.highlighted is not None else 0
+        ol.highlighted = max(0, min(len(self._shown) - 1, cur + delta))
 
     def action_cancel(self) -> None:
         self.dismiss(None)
@@ -241,7 +273,8 @@ class CTFApp(App):
     LeaderScreen { align: center middle; }
     #leader-box { width: 64; height: auto; border: thick $accent; background: $surface; padding: 1 2; }
     SessionPicker { align: center middle; }
-    #sess-opts { width: 76; height: auto; max-height: 18; border: thick $accent; }
+    #sess-filter { width: 76; }
+    #sess-opts { width: 76; height: auto; max-height: 16; border: thick $accent; }
     """
     BINDINGS = [
         Binding("ctrl+v", "paste", "粘贴", priority=True),
@@ -622,7 +655,10 @@ class CTFApp(App):
                 pass
 
     def _follow(self) -> None:
-        log = self.query_one("#log", VerticalScroll)
+        try:
+            log = self.query_one("#log", VerticalScroll)
+        except Exception:
+            return
         if (log.max_scroll_y - log.scroll_offset.y) <= 3:
             log.scroll_end(animate=False)
 

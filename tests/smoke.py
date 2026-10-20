@@ -304,9 +304,14 @@ async def _picker() -> None:
         app._pick_session()
         await pilot.pause()
         assert isinstance(app.screen, SessionPicker)
-        await pilot.press("escape")
+        for ch in "S1":
+            await pilot.press(ch)
+        await pilot.pause()
+        await pilot.press("enter")
+        await pilot.pause()
         await pilot.pause()
         assert not isinstance(app.screen, SessionPicker)
+        assert app.sess_title == "S1", app.sess_title
 
 
 def test_session_picker() -> None:
