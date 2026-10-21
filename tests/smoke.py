@@ -502,6 +502,40 @@ def test_anthropic_stream_events() -> None:
     assert "reasoning_start" in seen and "assistant_start" in seen
 
 
+async def _tui_mouse_scroll() -> None:
+    from textual import events
+    from textual.containers import VerticalScroll
+
+    from ctfcode.config import load_config
+    from ctfcode.tui import CTFApp
+
+    cfg = load_config(None)
+    cfg.mcp = {}
+    cfg.ui["resume"] = False
+    cfg.ui["sessions_dir"] = tempfile.mkdtemp(prefix="ctfcode-mouse-")
+    app = CTFApp(cfg)
+    async with app.run_test(size=(80, 20)) as pilot:
+        await pilot.pause()
+        for i in range(120):
+            app._log((f"line {i}", ""))
+        await pilot.pause()
+        await pilot.pause()
+        log = app.query_one("#log", VerticalScroll)
+        assert log.max_scroll_y > 0
+        # 指针停在输入框（非日志区）时，App 级兜底也要滚动日志
+        before = log.scroll_offset.y
+        app.screen._forward_event(events.MouseScrollUp(
+            widget=None, x=5, y=19, delta_x=0, delta_y=-1,
+            button=0, shift=False, meta=False, ctrl=False,
+        ))
+        await pilot.pause()
+        assert log.scroll_offset.y < before, (before, log.scroll_offset.y)
+
+
+def test_mouse_scroll() -> None:
+    asyncio.run(_tui_mouse_scroll())
+
+
 def main() -> int:
     print("smoke tests:")
     for name, fn in [
@@ -530,6 +564,7 @@ def main() -> int:
         ("anthropic-converters", test_anthropic_converters),
         ("anthropic-backend", test_anthropic_backend_resolve),
         ("anthropic-stream", test_anthropic_stream_events),
+        ("mouse-scroll", test_mouse_scroll),
     ]:
         check(name, fn)
     if failures:

@@ -14,6 +14,7 @@ import threading
 import uuid
 
 from rich.text import Text
+from textual import events
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Grid, Horizontal, VerticalScroll
@@ -288,6 +289,10 @@ class CTFApp(App):
         Binding("ctrl+end", "scroll_log('bottom')", "底部", show=False),
         Binding("shift+up", "scroll_log('up')", show=False),
         Binding("shift+down", "scroll_log('down')", show=False),
+        Binding("alt+up", "scroll_log('up')", show=False),
+        Binding("alt+down", "scroll_log('down')", show=False),
+        Binding("ctrl+up", "scroll_log('up')", show=False, priority=True),
+        Binding("ctrl+down", "scroll_log('down')", show=False, priority=True),
         Binding("ctrl+l", "clear_log", "清屏"),
         Binding("ctrl+q", "quit", "退出"),
     ]
@@ -465,6 +470,36 @@ class CTFApp(App):
             log.scroll_home(animate=False)
         elif direction == "bottom":
             log.scroll_end(animate=False)
+
+    def _mouse_debug(self, kind: str) -> None:
+        """诊断用：设置 CTFCODE_DEBUG_MOUSE=<文件> 后记录收到的滚轮事件。"""
+        path = os.environ.get("CTFCODE_DEBUG_MOUSE")
+        if not path:
+            return
+        try:
+            with open(path, "a", encoding="utf-8") as f:
+                f.write(kind + "\n")
+        except OSError:
+            pass
+
+    def on_mouse_scroll_down(self, event: events.MouseScrollDown) -> None:
+        # 兜底：滚轮落在输入框/状态栏等非日志区时也滚动对话。
+        self._mouse_debug("down")
+        try:
+            log = self.screen.query_one("#log", VerticalScroll)
+        except Exception:
+            return
+        log.scroll_down(animate=False)
+        event.stop()
+
+    def on_mouse_scroll_up(self, event: events.MouseScrollUp) -> None:
+        self._mouse_debug("up")
+        try:
+            log = self.screen.query_one("#log", VerticalScroll)
+        except Exception:
+            return
+        log.scroll_up(animate=False)
+        event.stop()
 
     def _log(self, *parts) -> None:
         self._mount(Static(Text.assemble(*parts)))
