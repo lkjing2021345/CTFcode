@@ -1,6 +1,13 @@
 # CTFcode — 终端 CTF 助手
 
+[![CI](https://github.com/lkjing2021345/CTFcode/actions/workflows/test.yml/badge.svg)](https://github.com/lkjing2021345/CTFcode/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
+[![English](https://img.shields.io/badge/README-English-lightgrey.svg)](README.en.md)
+
 给它一个 GZCTF 网址，它会：**识别站点 → 登录 → 拉题目 → 下载附件 → 起容器靶机 → 用 LLM 调用本地 CTF 工具解题 → 候选 flag 人工确认后提交 → 自动生成 WriteUp 草稿**。
+
+![screenshot](docs/screenshot.png)
 
 提供两种界面（同一个程序）：
 - **TUI**：终端交互风格的交互式终端界面（默认）。

@@ -352,9 +352,6 @@ class CTFApp(App):
         if not llm_ready(self.cfg):
             self._log(("! 未配置 LLM：请在 config.yaml 设置 llm.api_key，或设 llm.backend: opencode-go 复用 OpenCode 登录。",
                        "bold yellow"))
-        else:
-            kind = self.cfg.llm.backend or "custom"
-            self._log((f"LLM 后端：{kind} / {self.cfg.llm.model}", "dim"))
         if self.cfg.mcp:
             self.run_worker(self._init_mcp())
         self._resume_latest()
