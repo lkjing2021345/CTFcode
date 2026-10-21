@@ -1081,12 +1081,21 @@ class CTFApp(App):
             entries.append(m["label"])
             for v in m["variants"]:
                 entries.append(f"{m['label']}#{v}")
+        self._show_models(entries, path)
+
         if (self.cfg.llm.backend or "").lower().startswith("opencode"):
             try:
-                entries += await asyncio.to_thread(oc_models, self.cfg, self.session_id)
+                extra = await asyncio.wait_for(
+                    asyncio.to_thread(oc_models, self.cfg, self.session_id), timeout=20
+                )
             except Exception as e:  # noqa: BLE001
                 self._log(("获取 OpenCode 模型失败：", "red"), (friendly(e), "red"))
+                extra = []
+            if extra:
+                seen = set(entries)
+                self._show_models(entries + [m for m in extra if m not in seen], path)
 
+    def _show_models(self, entries: list[str], path: str | None) -> None:
         seen: set = set()
         self.model_list = [x for x in entries if not (x in seen or seen.add(x))]
         cur = f"{self.cfg.llm.provider}/{self.cfg.llm.model}" if self.cfg.llm.provider else self.cfg.llm.model
