@@ -28,3 +28,6 @@ sessions/
 # OS
 .DS_Store
 providers.jsonc
+
+# 本地编排归档（不发布）
+.w1mer/
