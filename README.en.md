@@ -6,7 +6,7 @@
 
 A terminal CTF assistant: point it at a GZCTF instance and it will **detect the site → sign in → pull challenges → download attachments → start container targets → solve with an LLM that drives local CTF tools → submit the candidate flag after you confirm → draft a write-up**.
 
-![screenshot](docs/screenshot.png)
+![demo](docs/demo.gif)
 
 ## Features
 

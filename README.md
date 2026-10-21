@@ -7,7 +7,7 @@
 
 给它一个 GZCTF 网址，它会：**识别站点 → 登录 → 拉题目 → 下载附件 → 起容器靶机 → 用 LLM 调用本地 CTF 工具解题 → 候选 flag 人工确认后提交 → 自动生成 WriteUp 草稿**。
 
-![screenshot](docs/screenshot.png)
+![demo](docs/demo.gif)
 
 提供两种界面（同一个程序）：
 - **TUI**：终端交互风格的交互式终端界面（默认）。
