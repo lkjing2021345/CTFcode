@@ -358,6 +358,55 @@ def test_sanitize_tool_history() -> None:
     assert tools[1]["content"] == "(aborted)"
 
 
+def test_providers() -> None:
+    import json
+
+    from ctfcode.providers import list_models, resolve, strip_jsonc
+
+    text = """
+    {
+      // comment
+      "providers": {
+        "p": {
+          "settings": {"baseURL": "http://x"},
+          "models": {
+            "m": {"body": {"a": 1}, "variants": [{"id": "v", "body": {"a": 2}}]},
+          },
+        },
+      },
+    }
+    """
+    data = json.loads(strip_jsonc(text))
+    provs = data["providers"]
+    assert list_models(provs)[0]["label"] == "p/m"
+    info = resolve(provs, "p", "m", "v")
+    assert info["base_url"] == "http://x"
+    assert info["body"] == {"a": 2}
+    assert resolve(provs, "p", "m")["body"] == {"a": 1}
+
+
+def test_provider_backend() -> None:
+    import tempfile
+
+    from ctfcode.config import load_config
+    from ctfcode.llm_backend import is_ready, resolve
+
+    path = os.path.join(tempfile.mkdtemp(), "prov.jsonc")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(
+            '{"providers":{"p":{"settings":{"baseURL":"http://127.0.0.1:1/v1"},'
+            '"models":{"m":{"body":{"enable_thinking":false}}}}}}'
+        )
+    cfg = load_config(None)
+    cfg.providers_file = path
+    cfg.llm.provider = "p"
+    cfg.llm.model = "m"
+    cfg.llm.backend = ""
+    assert is_ready(cfg)
+    b = resolve(cfg)
+    assert b.label == "provider:p" and b.extra_body == {"enable_thinking": False}
+
+
 def main() -> int:
     print("smoke tests:")
     for name, fn in [
@@ -381,6 +430,8 @@ def main() -> int:
         ("session-picker", test_session_picker),
         ("qemu-helpers", test_qemu_helpers),
         ("sanitize-tool-history", test_sanitize_tool_history),
+        ("providers", test_providers),
+        ("provider-backend", test_provider_backend),
     ]:
         check(name, fn)
     if failures:

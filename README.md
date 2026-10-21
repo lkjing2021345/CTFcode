@@ -83,6 +83,44 @@ llm:
   headers: {}                                  # 自定义请求头（可选）
 ```
 
+### 方式三：自定义提供商（opencode.jsonc 兼容）
+
+把提供商写进 `providers.jsonc`（格式与 opencode 的 `providers` 段一致）；不写则自动读取 `~/.config/opencode/opencode.jsonc`：
+
+```jsonc
+{
+  "providers": {
+    "qwen": {
+      "name": "Qwen",
+      "settings": { "baseURL": "http://127.0.0.1:8080/v1" },
+      "models": {
+        "qwen38": {
+          "name": "Qwen3.8-27B",
+          "body": { "enable_thinking": true },
+          "variants": [
+            { "id": "think", "body": { "enable_thinking": true } },
+            { "id": "nothink", "body": { "enable_thinking": false } }
+          ]
+        }
+      }
+    }
+  }
+}
+```
+
+```yaml
+llm:
+  provider: "qwen"     # 填了 provider 就优先走它（此时 backend 留空）
+  model: "qwen38"
+  variant: "nothink"   # 可选
+providers_file: ""     # 留空：./providers.jsonc → ~/.config/opencode/opencode.jsonc
+```
+
+- TUI 里 `/models` 会列出自定义提供商的全部模型（含 `#think` / `#nothink` 变体），`/model provider/model#variant` 切换。
+- `body` 会作为 `extra_body` 透传给服务端（例如 `enable_thinking`）。
+- 模型名以服务端 `/v1/models` 为准。
+- `providers.jsonc` 已被 `.gitignore` 排除（可能含内网地址）。
+
 ### 其余配置
 
 ```yaml

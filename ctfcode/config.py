@@ -13,6 +13,8 @@ class LLMConfig:
     api_key: str
     model: str
     backend: str = ""
+    provider: str = ""
+    variant: str = ""
     headers: dict = field(default_factory=dict)
 
 
@@ -36,6 +38,7 @@ class Config:
     scratch: str = os.path.expanduser("~/.cache/gzctf-agent/scratch")
     mcp: dict = field(default_factory=dict)
     ui: dict = field(default_factory=dict)
+    providers_file: str = ""
     source: str = ""
 
 
@@ -54,6 +57,8 @@ def load_config(path: str | None = None) -> Config:
         api_key=os.environ.get("LLM_API_KEY", llm.get("api_key", "")),
         model=os.environ.get("LLM_MODEL", llm.get("model", "deepseek-chat")),
         backend=os.environ.get("LLM_BACKEND", llm.get("backend", "")),
+        provider=os.environ.get("LLM_PROVIDER", llm.get("provider", "")),
+        variant=os.environ.get("LLM_VARIANT", llm.get("variant", "")),
         headers=llm.get("headers", {}) or {},
     )
 
@@ -76,5 +81,6 @@ def load_config(path: str | None = None) -> Config:
         scratch=os.path.expanduser(data.get("scratch", "~/.cache/gzctf-agent/scratch")),
         mcp=data.get("mcp", {}) or {},
         ui=data.get("ui", {}) or {},
+        providers_file=os.path.expanduser(data.get("providers_file", "")),
         source=(path if path and os.path.exists(path) else ("config.yaml" if os.path.exists("config.yaml") else "(未找到配置，使用默认值)")),
     )

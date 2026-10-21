@@ -82,6 +82,7 @@ def generate(cfg: Config, meta: dict, transcript: list[str], flag: str) -> str:
             model=backend.model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
+            **({"extra_body": backend.extra_body} if backend.extra_body else {}),
         )
         text = resp.choices[0].message.content
         if text and text.strip():

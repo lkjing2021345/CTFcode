@@ -63,6 +63,7 @@ def solve(cfg: Config, runner: ToolRunner, challenge, detail: dict, files: list[
             tools=TOOL_SCHEMAS,
             tool_choice="auto",
             temperature=0.2,
+            **({"extra_body": backend.extra_body} if backend.extra_body else {}),
         )
         msg = resp.choices[0].message
         messages.append(msg)

@@ -7,10 +7,18 @@ llm:
                                    #       longcat-2.5-preview-free(免费) / beam-free(免费) 等
                                    # 看图/视频帧需多模态模型（如某个支持 vision 的模型）
 
-  # 选项 B：普通 OpenAI 兼容端点（把 backend 留空 ""）
+  # 选项 C：自定义提供商（providers.jsonc / opencode.jsonc 里的 providers 段）
+  #   填了 provider 就优先走它，示例：provider: "qwen_pjh"  model: "qwen38"  variant: "nothink"
+  provider: ""
+  variant: ""
+
+  # 选项 B：普通 OpenAI 兼容端点（backend 留空、provider 留空时启用）
   base_url: "https://api.deepseek.com/v1"
   api_key: ""
   headers: {}                      # 自定义请求头（可选）
+
+# 自定义提供商文件（留空则自动找 ./providers.jsonc，再退回 ~/.config/opencode/opencode.jsonc）
+providers_file: ""
 
 # ── GZCTF 站点（TUI 里 /open 可直接用这里的配置）──
 gzctf:

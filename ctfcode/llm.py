@@ -152,6 +152,7 @@ class AgentSession:
             tool_choice="auto",
             temperature=0.2,
             stream=True,
+            **({"extra_body": self.backend.extra_body} if self.backend.extra_body else {}),
         )
         for chunk in stream:
             if self.cancel_event is not None and self.cancel_event.is_set():
@@ -202,6 +203,7 @@ class AgentSession:
         resp = await client.chat.completions.create(
             model=self.backend.model, messages=self.messages,
             tools=tools, tool_choice="auto", temperature=0.2,
+            **({"extra_body": self.backend.extra_body} if self.backend.extra_body else {}),
         )
         m = resp.choices[0].message
         tool_acc: dict[int, dict] = {}

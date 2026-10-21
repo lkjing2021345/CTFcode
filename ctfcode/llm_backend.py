@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 
 import requests
 
+from . import providers as providers_mod
 from .config import Config
 
 GO_BASE = {
@@ -31,6 +32,7 @@ class LLMBackend:
     model: str
     headers: dict = field(default_factory=dict)
     label: str = "custom"
+    extra_body: dict = field(default_factory=dict)
 
 
 def _opencode_export() -> list:
@@ -59,6 +61,19 @@ def _pick_credential(integration: str = "opencode") -> dict | None:
 
 def resolve(cfg: Config, session_id: str | None = None) -> LLMBackend:
     """根据配置返回实际使用的 LLM 后端。"""
+    provider = (cfg.llm.provider or "").strip()
+    if provider:
+        provs, _ = providers_mod.load(cfg)
+        info = providers_mod.resolve(provs, provider, cfg.llm.model or None, cfg.llm.variant or None)
+        return LLMBackend(
+            info["base_url"],
+            info["api_key"],
+            info["model"],
+            dict(info.get("headers") or {}),
+            label=f"provider:{provider}",
+            extra_body=dict(info.get("body") or {}),
+        )
+
     backend = (cfg.llm.backend or "").strip().lower()
     if backend.startswith("opencode"):
         cred = _pick_credential("opencode")
@@ -86,6 +101,14 @@ def resolve(cfg: Config, session_id: str | None = None) -> LLMBackend:
 
 def is_ready(cfg: Config) -> bool:
     """LLM 是否已具备可用配置（用于 UI 提示）。"""
+    if (cfg.llm.provider or "").strip():
+        try:
+            provs, _ = providers_mod.load(cfg)
+            providers_mod.resolve(provs, cfg.llm.provider.strip(),
+                                  cfg.llm.model or None, cfg.llm.variant or None)
+            return True
+        except Exception:
+            return False
     if (cfg.llm.backend or "").strip().lower().startswith("opencode"):
         return True
     return bool(cfg.llm.api_key) and not cfg.llm.api_key.startswith("sk-替换")

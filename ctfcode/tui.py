@@ -362,7 +362,13 @@ class CTFApp(App):
         self._log((f"配置：{self.cfg.source}", "dim"))
         if "未找到" in (self.cfg.source or ""):
             self._log(("! 未找到 config.yaml，正在使用默认值。请先：cp config.example.yaml config.yaml", "bold yellow"))
-        self._log((f"LLM：{self.cfg.llm.backend or 'custom'} / {self.cfg.llm.model}", "dim"))
+        if self.cfg.llm.provider:
+            llm_label = f"provider:{self.cfg.llm.provider} / {self.cfg.llm.model}"
+            if self.cfg.llm.variant:
+                llm_label += f"#{self.cfg.llm.variant}"
+        else:
+            llm_label = f"{self.cfg.llm.backend or 'custom'} / {self.cfg.llm.model}"
+        self._log((f"LLM：{llm_label}", "dim"))
 
     # ---------- 会话 ----------
     def _refresh_header(self) -> None:
@@ -861,7 +867,8 @@ class CTFApp(App):
     def _llm_info(self) -> None:
         from .llm_backend import is_ready, resolve
 
-        self._log((f"cfg: backend={self.cfg.llm.backend!r} model={self.cfg.llm.model!r}", "dim"))
+        self._log((f"cfg: backend={self.cfg.llm.backend!r} provider={self.cfg.llm.provider!r} "
+                   f"model={self.cfg.llm.model!r} variant={self.cfg.llm.variant!r}", "dim"))
         self._log((f"配置来源：{self.cfg.source}", "dim"))
         if not is_ready(self.cfg):
             self._log(("未就绪：缺少 api_key，或 backend 不是 opencode-go", "red"))
@@ -1056,7 +1063,9 @@ class CTFApp(App):
         self._log(("已连接 ", "green"), (url, "bold"), (f"  [{mode}]", "dim"))
 
     async def _models(self, args: list[str]) -> None:
-        from .llm_backend import list_models
+        from .llm_backend import list_models as oc_models
+        from .providers import list_models as prov_models
+        from .providers import load as prov_load
 
         if args and args[0].isdigit() and self.model_list:
             idx = int(args[0])
@@ -1065,22 +1074,49 @@ class CTFApp(App):
             else:
                 self._log(("序号越界。", "red"))
             return
-        try:
-            models = await asyncio.to_thread(list_models, self.cfg, self.session_id)
-        except Exception as e:  # noqa: BLE001
-            self._log(("获取模型列表失败：", "red"), (friendly(e), "red"))
-            return
-        self.model_list = models
-        self._log((f"可用模型（{len(models)}）：", "bold"))
-        for i, m in enumerate(models):
-            mark = "  ← 当前" if m == self.cfg.llm.model else ""
+
+        entries: list[str] = []
+        provs, path = prov_load(self.cfg)
+        for m in prov_models(provs):
+            entries.append(m["label"])
+            for v in m["variants"]:
+                entries.append(f"{m['label']}#{v}")
+        if (self.cfg.llm.backend or "").lower().startswith("opencode"):
+            try:
+                entries += await asyncio.to_thread(oc_models, self.cfg, self.session_id)
+            except Exception as e:  # noqa: BLE001
+                self._log(("获取 OpenCode 模型失败：", "red"), (friendly(e), "red"))
+
+        seen: set = set()
+        self.model_list = [x for x in entries if not (x in seen or seen.add(x))]
+        cur = f"{self.cfg.llm.provider}/{self.cfg.llm.model}" if self.cfg.llm.provider else self.cfg.llm.model
+        if self.cfg.llm.variant:
+            cur += f"#{self.cfg.llm.variant}"
+        self._log((f"可用模型（{len(self.model_list)}）：", "bold"))
+        if path:
+            self._log((f"提供商文件：{path}", "dim"))
+        for i, m in enumerate(self.model_list):
+            mark = "  ← 当前" if m == cur else ""
             self._log((f"  [{i}] ", "cyan"), (m + mark, ""))
-        self._log(("用 /models <序号> 或 /model <名字> 切换。", "dim"))
+        self._log(("用 /models <序号> 或 /model <名字> 切换（自定义：provider/model[#variant]）。", "dim"))
 
     def _set_model(self, name: str) -> None:
-        self.cfg.llm.model = name
-        if self.session.backend is not None:
-            self.session.backend.model = name
+        if "/" in name and not name.startswith("opencode"):
+            pid, rest = name.split("/", 1)
+            variant = ""
+            if "#" in rest:
+                rest, variant = rest.split("#", 1)
+            self.cfg.llm.provider = pid
+            self.cfg.llm.model = rest
+            self.cfg.llm.variant = variant
+            self.cfg.llm.backend = ""
+        else:
+            self.cfg.llm.provider = ""
+            self.cfg.llm.variant = ""
+            self.cfg.llm.model = name
+        # 强制下一次重新解析后端
+        self.session.backend = None
+        self.session._client = None
         self._log(("模型已切换：", "bold green"), (name, ""))
 
     async def _games(self) -> None:

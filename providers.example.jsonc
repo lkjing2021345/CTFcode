@@ -1,0 +1,22 @@
+{
+  // 自定义提供商（与 opencode 的 providers 段兼容）。
+  // 复制为 providers.jsonc 并改成你的地址；providers.jsonc 已被 .gitignore 忽略。
+  "providers": {
+    "local_qwen": {
+      "name": "Local Qwen",
+      "settings": {
+        "baseURL": "http://127.0.0.1:8080/v1"
+      },
+      "models": {
+        "qwen38": {
+          "name": "Qwen3.8-27B",
+          "body": { "enable_thinking": true },
+          "variants": [
+            { "id": "think", "body": { "enable_thinking": true } },
+            { "id": "nothink", "body": { "enable_thinking": false } }
+          ]
+        }
+      }
+    }
+  }
+}
