@@ -127,6 +127,20 @@ providers_file: ""     # 留空：./providers.jsonc → ~/.config/opencode/openc
 - 模型名以服务端 `/v1/models` 为准。
 - `providers.jsonc` 已被 `.gitignore` 排除（可能含内网地址）。
 
+### 方式四：Anthropic 原生
+
+Claude 走官方 Messages API（非 OpenAI 兼容），支持工具调用、图片和扩展思考：
+
+```yaml
+llm:
+  backend: "anthropic"
+  model: "claude-sonnet-4-5"
+  api_key: "sk-ant-..."   # 或环境变量 ANTHROPIC_API_KEY
+  variant: "think"        # 可选：开启扩展思考
+```
+
+> 依赖 `anthropic`（已在 `requirements.txt`）。自定义网关可填 `base_url`。
+
 ### 其余配置
 
 ```yaml

@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import uuid
 from dataclasses import dataclass, field
@@ -75,6 +76,21 @@ def resolve(cfg: Config, session_id: str | None = None) -> LLMBackend:
         )
 
     backend = (cfg.llm.backend or "").strip().lower()
+
+    if backend.startswith("anthropic"):
+        key = cfg.llm.api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+        base = (
+            cfg.llm.anthropic_base_url
+            or os.environ.get("ANTHROPIC_BASE_URL", "")
+            or "https://api.anthropic.com"
+        )
+        return LLMBackend(
+            base,
+            key,
+            cfg.llm.model or "claude-sonnet-4-5",
+            {},
+            label="anthropic",
+        )
     if backend.startswith("opencode"):
         cred = _pick_credential("opencode")
         if not cred:
@@ -111,6 +127,8 @@ def is_ready(cfg: Config) -> bool:
             return False
     if (cfg.llm.backend or "").strip().lower().startswith("opencode"):
         return True
+    if (cfg.llm.backend or "").strip().lower().startswith("anthropic"):
+        return bool(cfg.llm.api_key or os.environ.get("ANTHROPIC_API_KEY"))
     return bool(cfg.llm.api_key) and not cfg.llm.api_key.startswith("sk-替换")
 
 

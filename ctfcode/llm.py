@@ -46,6 +46,7 @@ class AgentSession:
         self.runner = runner
         self.session_id = session_id
         self._client = None
+        self._anthropic_client = None
         self.backend = None
         self.mcp = None  # 由外部注入 MCPManager
         self.cancel_event = None  # 由 UI 注入 threading.Event，用于中止
@@ -71,6 +72,8 @@ class AgentSession:
                 "或设置 llm.backend: opencode-go（并确保 `opencode auth login`）；"
                 "若配置来源显示「未找到配置」，说明启动时没读到 config.yaml，请用 `ctfcode` 启动。"
             )
+        if self.backend.label == "anthropic":
+            return None
         if self._client is None:
             self._client = AsyncOpenAI(
                 base_url=self.backend.base_url,
@@ -189,6 +192,8 @@ class AgentSession:
         holder["tool_acc"] = tool_acc
 
     async def _complete_stream(self, client, tools, emit) -> tuple[str, str, dict[int, dict]]:
+        if self.backend is not None and self.backend.label == "anthropic":
+            return await self._anthropic_stream(tools, emit)
         loop = asyncio.get_running_loop()
 
         def emit_ts(kind, payload):
@@ -200,6 +205,8 @@ class AgentSession:
 
     async def _complete_once(self, client, tools) -> tuple[str, str, dict[int, dict]]:
         """非流式回退。"""
+        if self.backend is not None and self.backend.label == "anthropic":
+            return await self._anthropic_once(tools)
         resp = await client.chat.completions.create(
             model=self.backend.model, messages=self.messages,
             tools=tools, tool_choice="auto", temperature=0.2,
@@ -210,6 +217,38 @@ class AgentSession:
         for idx, tc in enumerate(m.tool_calls or []):
             tool_acc[idx] = {"id": tc.id, "name": tc.function.name, "args": tc.function.arguments or ""}
         return m.content or "", _extract_reasoning(m) or "", tool_acc
+
+    def _get_anthropic(self):
+        from anthropic import AsyncAnthropic
+
+        if self._anthropic_client is None:
+            kwargs: dict = {"api_key": self.backend.api_key}
+            if self.backend.base_url:
+                kwargs["base_url"] = self.backend.base_url
+            self._anthropic_client = AsyncAnthropic(**kwargs)
+        return self._anthropic_client
+
+    def _anthropic_args(self, tools):
+        from . import anthropic_backend as ab
+
+        system, msgs = ab.convert_messages(self.messages)
+        return {
+            "model": self.backend.model,
+            "system": system,
+            "messages": msgs,
+            "tools": ab.convert_tools(tools),
+            "thinking": (self.cfg.llm.variant or "").lower() == "think",
+        }
+
+    async def _anthropic_stream(self, tools, emit) -> tuple[str, str, dict[int, dict]]:
+        from . import anthropic_backend as ab
+
+        return await ab.stream_chat(self._get_anthropic(), emit=emit, **self._anthropic_args(tools))
+
+    async def _anthropic_once(self, tools) -> tuple[str, str, dict[int, dict]]:
+        from . import anthropic_backend as ab
+
+        return await ab.once_chat(self._get_anthropic(), **self._anthropic_args(tools))
 
     async def run(self, emit) -> str | None:
         """emit(kind, payload)。返回候选 flag。"""

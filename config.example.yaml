@@ -12,6 +12,13 @@ llm:
   provider: ""
   variant: ""
 
+  # 选项 D：Anthropic 原生（非 OpenAI 兼容，需 anthropic SDK）
+  # backend: "anthropic"
+  # model: "claude-sonnet-4-5"
+  # api_key: "sk-ant-..."        # 或环境变量 ANTHROPIC_API_KEY
+  # anthropic_base_url: ""       # 自定义网关（可选，默认官方地址）
+  # variant: "think"             # 开启扩展思考（可选）
+
   # 选项 B：普通 OpenAI 兼容端点（backend 留空、provider 留空时启用）
   base_url: "https://api.deepseek.com/v1"
   api_key: ""

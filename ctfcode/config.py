@@ -15,6 +15,7 @@ class LLMConfig:
     backend: str = ""
     provider: str = ""
     variant: str = ""
+    anthropic_base_url: str = ""
     headers: dict = field(default_factory=dict)
 
 
@@ -59,6 +60,7 @@ def load_config(path: str | None = None) -> Config:
         backend=os.environ.get("LLM_BACKEND", llm.get("backend", "")),
         provider=os.environ.get("LLM_PROVIDER", llm.get("provider", "")),
         variant=os.environ.get("LLM_VARIANT", llm.get("variant", "")),
+        anthropic_base_url=os.environ.get("ANTHROPIC_BASE_URL", llm.get("anthropic_base_url", "")),
         headers=llm.get("headers", {}) or {},
     )
 

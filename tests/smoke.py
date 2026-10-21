@@ -407,6 +407,101 @@ def test_provider_backend() -> None:
     assert b.label == "provider:p" and b.extra_body == {"enable_thinking": False}
 
 
+def test_anthropic_converters() -> None:
+    from ctfcode.anthropic_backend import convert_messages, convert_tools
+
+    tools = convert_tools([{
+        "type": "function",
+        "function": {"name": "bash", "description": "d",
+                     "parameters": {"type": "object", "properties": {"command": {"type": "string"}}}},
+    }])
+    assert tools[0]["name"] == "bash" and "input_schema" in tools[0]
+
+    msgs = [
+        {"role": "system", "content": "sys"},
+        {"role": "user", "content": [
+            {"type": "text", "text": "look"},
+            {"type": "image_url", "image_url": {"url": "data:image/png;base64,AAAA"}},
+        ]},
+        {"role": "assistant", "content": None, "tool_calls": [
+            {"id": "t1", "type": "function",
+             "function": {"name": "bash", "arguments": '{"command":"ls"}'}},
+        ]},
+        {"role": "tool", "tool_call_id": "t1", "content": "ok"},
+    ]
+    system, conv = convert_messages(msgs)
+    assert system == "sys"
+    assert conv[0]["content"][1]["type"] == "image"
+    assert conv[0]["content"][1]["source"]["media_type"] == "image/png"
+    assert conv[1]["content"][0]["type"] == "tool_use"
+    assert conv[1]["content"][0]["input"] == {"command": "ls"}
+    assert conv[2]["content"][0]["type"] == "tool_result"
+
+
+def test_anthropic_backend_resolve() -> None:
+    from ctfcode.config import load_config
+    from ctfcode.llm_backend import resolve
+
+    cfg = load_config(None)
+    cfg.llm.backend = "anthropic"
+    cfg.llm.model = "claude-sonnet-4-5"
+    cfg.llm.api_key = "sk-ant-test"
+    b = resolve(cfg)
+    assert b.label == "anthropic"
+    assert b.base_url == "https://api.anthropic.com"
+    assert b.model == "claude-sonnet-4-5"
+
+
+def test_anthropic_stream_events() -> None:
+    import asyncio
+    from types import SimpleNamespace as NS
+
+    from ctfcode.anthropic_backend import stream_chat
+
+    events = [
+        NS(type="content_block_start", index=0, content_block=NS(type="thinking")),
+        NS(type="content_block_delta", index=0, delta=NS(type="thinking_delta", thinking="想")),
+        NS(type="content_block_delta", index=0, delta=NS(type="thinking_delta", thinking="一下")),
+        NS(type="content_block_start", index=1, content_block=NS(type="text")),
+        NS(type="content_block_delta", index=1, delta=NS(type="text_delta", text="你好")),
+        NS(type="content_block_start", index=2, content_block=NS(type="tool_use", id="t1", name="bash")),
+        NS(type="content_block_delta", index=2,
+           delta=NS(type="input_json_delta", partial_json='{"command":"ls"}')),
+    ]
+
+    class Stream:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        def __aiter__(self):
+            async def gen():
+                for e in events:
+                    yield e
+
+            return gen()
+
+    class Messages:
+        def stream(self, **kw):
+            return Stream()
+
+    fake = NS(messages=Messages())
+    seen: list[str] = []
+
+    def emit(kind, data):
+        seen.append(kind)
+
+    content, reasoning, tool_acc = asyncio.run(
+        stream_chat(fake, model="m", system="s", messages=[], tools=[], emit=emit, thinking=True)
+    )
+    assert content == "你好"
+    assert reasoning == "想一下"
+    assert tool_acc[2]["name"] == "bash" and tool_acc[2]["args"] == '{"command":"ls"}'
+    assert "reasoning_start" in seen and "assistant_start" in seen
+
+
 def main() -> int:
     print("smoke tests:")
     for name, fn in [
@@ -432,6 +527,9 @@ def main() -> int:
         ("sanitize-tool-history", test_sanitize_tool_history),
         ("providers", test_providers),
         ("provider-backend", test_provider_backend),
+        ("anthropic-converters", test_anthropic_converters),
+        ("anthropic-backend", test_anthropic_backend_resolve),
+        ("anthropic-stream", test_anthropic_stream_events),
     ]:
         check(name, fn)
     if failures:

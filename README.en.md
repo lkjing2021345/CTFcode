@@ -48,6 +48,18 @@ llm:
 providers_file: ""   # default: ./providers.jsonc → ~/.config/opencode/opencode.jsonc
 ```
 
+### Anthropic
+
+Native Claude support (Messages API, tool use, images, extended thinking):
+
+```yaml
+llm:
+  backend: "anthropic"
+  model: "claude-sonnet-4-5"
+  api_key: "sk-ant-..."   # or ANTHROPIC_API_KEY
+  variant: "think"        # optional: extended thinking
+```
+
 ### Custom providers (opencode-style)
 
 ```jsonc
