@@ -26,7 +26,6 @@ agent/
 ├── pyproject.toml
 ├── tests/smoke.py          # 冒烟测试
 ├── scripts/                # ida_headless.py / ida_mcp_serve.sh / qemu_target.py
-├── .w1mer/                 # 任务与文档归档
 └── ctfcode/
     ├── tui.py              # 终端界面（会话 / Leader / 导出）
     ├── cli.py              # 命令行模式
