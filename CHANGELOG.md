@@ -6,6 +6,10 @@
 
 - **view_image 工具**：Agent 可主动查看工作目录里的图片（题目附件/截图/隐写图），支持 png、jpg/jpeg、webp、gif、bmp，限制 20MB；图片作为多模态 user 消息追加在工具结果之后，OpenAI 兼容端点与 Anthropic 后端均可用。
 
+### Performance
+
+- **流式渲染节流**：流式增量不再逐个 token 重建整段文本，改为累积到刷新帧统一重绘；`_strip_astral` 只处理新增片段。长回复场景下 CPU 明显下降（合成基准约 7 倍），流式观感不变。
+
 ## v0.1.0 — 2026-10-21
 
 ### Features

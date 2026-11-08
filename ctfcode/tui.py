@@ -578,6 +578,29 @@ class CTFApp(App):
         self._spin_i += 1
         if self._status_msg:
             self._render_status()
+        # 流式增量合并到这里统一刷新，避免每个 token 都重绘整段文本
+        self._flush_live()
+
+    def _flush_live(self) -> None:
+        """把累积的流式增量刷新到界面（按帧节流）。
+
+        直接在 _emit 里 update() 会导致每个 delta 都重建整段 Text，
+        长回复时是 O(n^2) 的 CPU 开销；这里每次只做一次整段渲染。
+        """
+        changed = False
+        r = self._live_reasoning
+        if r is not None and r[3]:
+            r[1].update(r[2])
+            r[3] = False
+            changed = True
+        a = self._live_assistant
+        if a is not None and a[2]:
+            a[0].update(
+                Text.assemble((self.icons["assistant"], "bold green"), (a[1], "")))
+            a[2] = False
+            changed = True
+        if changed:
+            self._follow()
 
     def on_collapsible_toggled(self, event) -> None:
         # 点开/收起思考后把焦点还给输入框，方便继续打字
@@ -711,29 +734,30 @@ class CTFApp(App):
                                collapsed_symbol="▸", expanded_symbol="▾", classes="thinking")
             self._mount(coll)
             self._make_clickable_no_focus(coll)
-            self._live_reasoning = [coll, body, ""]
+            self._live_reasoning = [coll, body, "", False]
             self._set_status("思考中…")
         elif kind == "reasoning_delta":
             if self._live_reasoning:
-                self._live_reasoning[2] += data
-                self._live_reasoning[1].update(_strip_astral(self._live_reasoning[2]))
-                self._follow()
+                # 只对新增片段做字符过滤，并只累积显示串
+                self._live_reasoning[2] += _strip_astral(data)
+                self._live_reasoning[3] = True
         elif kind == "reasoning_end":
             if self._live_reasoning:
+                self._flush_live()
                 self._live_reasoning[0].collapsed = True
                 self._live_reasoning = None
         elif kind == "assistant_start":
             st = Static(Text(""), markup=False)
             self._mount(st)
-            self._live_assistant = [st, ""]
+            self._live_assistant = [st, "", False]
         elif kind == "assistant_delta":
             if self._live_assistant:
-                self._live_assistant[1] += data
-                self._live_assistant[0].update(
-                    Text.assemble((self.icons["assistant"], "bold green"), (_strip_astral(self._live_assistant[1]), "")))
-                self._follow()
+                self._live_assistant[1] += _strip_astral(data)
+                self._live_assistant[2] = True
         elif kind == "assistant_end":
-            self._live_assistant = None
+            if self._live_assistant:
+                self._flush_live()
+                self._live_assistant = None
         elif kind == "stream_fallback":
             self._log(("（该后端不支持流式，已回退一次性返回）", "dim"))
         elif kind == "reasoning":
