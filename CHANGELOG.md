@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- **view_image 工具**：Agent 可主动查看工作目录里的图片（题目附件/截图/隐写图），支持 png、jpg/jpeg、webp、gif、bmp，限制 20MB；图片作为多模态 user 消息追加在工具结果之后，OpenAI 兼容端点与 Anthropic 后端均可用。
+
 ## v0.1.0 — 2026-10-21
 
 ### Features

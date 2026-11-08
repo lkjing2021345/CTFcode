@@ -21,6 +21,9 @@ _DENY = [
     "chmod -R 777 /",
 ]
 
+IMAGE_EXT = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"}
+MAX_IMAGE_BYTES = 20 * 1024 * 1024  # OpenAI 单图上限约 20MB
+
 # ── 提供给 LLM 的工具 schema ──
 TOOL_SCHEMAS = [
     {
@@ -77,6 +80,23 @@ TOOL_SCHEMAS = [
                 "type": "object",
                 "properties": {"code": {"type": "string"}},
                 "required": ["code"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "view_image",
+            "description": (
+                "查看工作目录里的图片（png/jpg/jpeg/webp/gif/bmp），把图片真正交给多模态模型。"
+                "需要观察题目配图、截图、隐写图片时调用；read_file 只能读到十六进制，看不到画面。"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "图片路径，相对当前工作目录"},
+                },
+                "required": ["path"],
             },
         },
     },
@@ -157,6 +177,21 @@ class ToolRunner:
             return f"[timeout] 超过 {timeout}s 未结束"
         except Exception as e:  # noqa: BLE001
             return f"[error] {e}"
+
+    def resolve_image(self, path: str) -> str:
+        """校验并返回工作目录内图片的绝对路径，供多模态消息使用。"""
+        p = self._resolve(path)
+        if not os.path.isfile(p):
+            raise ValueError(f"图片不存在: {path}")
+        ext = os.path.splitext(p)[1].lower()
+        if ext not in IMAGE_EXT:
+            raise ValueError(f"不是支持的图片格式: {ext or '(无扩展名)'}")
+        size = os.path.getsize(p)
+        if size > MAX_IMAGE_BYTES:
+            raise ValueError(f"图片过大: {size / 1024 / 1024:.1f}MB（上限 20MB）")
+        if size == 0:
+            raise ValueError(f"图片是空文件: {path}")
+        return p
 
     def read_file(self, path: str, max_bytes: int = 20000) -> str:
         p = self._resolve(path)

@@ -59,6 +59,32 @@ def test_tools() -> None:
         assert "越界" in out or "error" in out.lower()
 
 
+def test_view_image_tool() -> None:
+    from PIL import Image
+
+    from ctfcode.tools import TOOL_SCHEMAS, ToolRunner
+
+    names = {(s.get("function") or {}).get("name") for s in TOOL_SCHEMAS}
+    assert "view_image" in names, names
+    with tempfile.TemporaryDirectory() as d:
+        runner = ToolRunner(d)
+        img = os.path.join(d, "pic.png")
+        Image.new("RGB", (4, 4), (9, 8, 7)).save(img)
+        assert runner.resolve_image("pic.png") == os.path.abspath(img)
+        try:
+            runner.resolve_image("../../etc/passwd")
+            raise AssertionError("越界路径应被拒绝")
+        except ValueError as e:
+            assert "越界" in str(e), e
+        txt = os.path.join(d, "notes.txt")
+        open(txt, "w", encoding="utf-8").write("not an image")
+        try:
+            runner.resolve_image("notes.txt")
+            raise AssertionError("非图片应被拒绝")
+        except ValueError as e:
+            assert "不是支持的图片格式" in str(e), e
+
+
 def test_container_parse() -> None:
     from ctfcode.gzctf import GZCTFClient
 
@@ -543,6 +569,7 @@ def main() -> int:
         ("skills", test_skills),
         ("config", test_config),
         ("tools", test_tools),
+        ("view-image-tool", test_view_image_tool),
         ("container-parse", test_container_parse),
         ("mcp-shapes", test_mcp_message_shapes),
         ("tui-mount+leader", test_tui),

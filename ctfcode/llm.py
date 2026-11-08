@@ -19,6 +19,7 @@ DEFAULT_SYSTEM = """你是一名顶尖 CTF 选手，也是一个能调用工具�
 - 用 python 工具跑 Python3 片段（crypto/steg/pwn 脚本）
 - 用 read_file / write_file 读写当前工作目录里的文件
 - 用户粘贴的图片/视频帧会作为图片直接给你看
+- 用 view_image 工具可以主动查看工作目录里的图片（题目配图、截图、隐写图）
 
 规则：
 1. 先侦察再动手；每次只做一小步，看到输出再决定下一步。
@@ -122,7 +123,7 @@ class AgentSession:
         self.messages.append({"role": "user", "content": text})
         self.transcript.append(f"[user] {text}")
 
-    def add_user_multimodal(self, text: str, image_paths: list[str]) -> None:
+    def _multimodal_content(self, text: str, image_paths: list[str]) -> list:
         from .clipboard import image_data_url
 
         content: list = [{"type": "text", "text": text}]
@@ -131,7 +132,10 @@ class AgentSession:
                 content.append({"type": "image_url", "image_url": {"url": image_data_url(p)}})
             except Exception:
                 pass
-        self.messages.append({"role": "user", "content": content})
+        return content
+
+    def add_user_multimodal(self, text: str, image_paths: list[str]) -> None:
+        self.messages.append({"role": "user", "content": self._multimodal_content(text, image_paths)})
         names = ", ".join(f"🖼{p.split('/')[-1]}" for p in image_paths)
         self.transcript.append(f"[user] {text} {names}")
 
@@ -305,6 +309,7 @@ class AgentSession:
                 break
 
             stop = False
+            view_images: list[str] = []
             for i in sorted(tool_acc):
                 slot = tool_acc[i]
                 name = slot["name"]
@@ -323,7 +328,12 @@ class AgentSession:
                 else:
                     emit("tool_call", {"name": name, "args": args})
                     try:
-                        if self.mcp is not None and name in self.mcp.tool_names():
+                        is_mcp = self.mcp is not None and name in self.mcp.tool_names()
+                        if name == "view_image" and not is_mcp:
+                            img = await asyncio.to_thread(self.runner.resolve_image, args.get("path", ""))
+                            view_images.append(img)
+                            result = f"[image] 已加载 {args.get('path')}（图片内容见下一条 user 消息）"
+                        elif is_mcp:
                             result = await self.mcp.call(name, args)
                         else:
                             result = await asyncio.to_thread(dispatch, self.runner, name, args)
@@ -338,6 +348,16 @@ class AgentSession:
                     self.transcript.append(f"[tool:{name}] {json.dumps(args, ensure_ascii=False)} -> {result[:1500]}")
                     emit("tool_result", {"name": name, "result": result})
                     self.messages.append({"role": "tool", "tool_call_id": tc_id, "content": result})
+            if view_images:
+                # 工具消息只能放文本；图片放在紧随其后的 user 消息里，OpenAI/Anthropic 都能识别。
+                self.messages.append({
+                    "role": "user",
+                    "content": self._multimodal_content(
+                        "（view_image 工具加载的图片）", view_images),
+                })
+                names = ", ".join(p.split("/")[-1] for p in view_images)
+                self.transcript.append(f"[view_image] {names}")
+                emit("images", {"paths": view_images})
             if stop:
                 break
         return self.pending_flag

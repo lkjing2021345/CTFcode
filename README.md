@@ -34,7 +34,7 @@ agent/
     ├── llm_backend.py      # LLM 后端解析（OpenAI 兼容 / OpenCode Go）
     ├── mcp_client.py       # MCP 客户端（sse / http / stdio）
     ├── sessions.py         # 会话持久化
-    ├── tools.py            # 工具（bash/python/read/write/skill/submit_flag）
+    ├── tools.py            # 工具（bash/python/read/write/view_image/skill/submit_flag）
     ├── skills.py           # 技能注册
     ├── skills/             # 各方向工具手册（*.md）
     ├── clipboard.py        # 剪贴板：文本/图片/文件 + 视频抽帧
@@ -203,6 +203,16 @@ workroot: "~/CTF/WriteUp"
 - **视频**：抽 6 帧图片喂给模型（对应视频类 Misc 题）。
 
 > 依赖 `xclip`（X11）已装；Wayland 会回退 `wl-paste`。
+
+### Agent 主动看图（view_image）
+
+除了用户粘贴，Agent 现在可以调用内置 `view_image` 工具查看**工作目录里已有的图片**（题目附件、截图、隐写图等）：
+
+```text
+view_image(path="challenge.png")
+```
+
+它会先校验路径/格式/大小（png、jpg/jpeg、webp、gif、bmp，≤20MB），然后由 Agent 主循环把图片作为多模态 user 消息追加到工具结果之后。这样 Misc/Stego 题里的配图不需要手动再粘贴一遍。`read_file` 仍然只适合文本/十六进制，不要用它看图。
 
 ### 斜杠命令
 

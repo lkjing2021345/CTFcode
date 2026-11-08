@@ -747,6 +747,9 @@ class CTFApp(App):
         elif kind == "tool_result":
             self._set_status("处理结果…")
             self._fill_tool_result(data["result"])
+        elif kind == "images":
+            names = ", ".join(os.path.basename(p) for p in data.get("paths") or [])
+            self._log(("[图片] 已加载：", "dim"), (names, "dim"))
         elif kind == "flag":
             self._set_status("整理候选 flag…")
             self._log(("候选 flag：", "bold magenta"), (data["flag"], "bold magenta"))
