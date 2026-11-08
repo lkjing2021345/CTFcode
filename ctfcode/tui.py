@@ -351,7 +351,8 @@ class CTFApp(App):
     def on_mount(self) -> None:
         self.query_one("#log", VerticalScroll).can_focus = False
         self.query_one("#prompt", Input).focus()
-        self.set_interval(0.12, self._tick)
+        # 0.2s（5fps）足够跟手；比 0.12s 省约一半重绘开销，观感几乎无差别
+        self.set_interval(0.2, self._tick)
         self._log(("CTFcode 已就绪。", "bold"))
         self._log(("用 /open 连接站点，/help 看命令，Ctrl+V 粘贴图片/视频/文本，Ctrl+O 展开思考。", "dim"))
         if not llm_ready(self.cfg):
